@@ -1,4 +1,4 @@
-/* * Data converted from C:/Users/metesepetcioglu/Documents/EspressifIDE_Workspace/210.APB.BTN/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from C:/Users/metesepetcioglu/Documents/EspressifIDE_Workspace/210.APB.BTN(esp32_webserver_017)/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 #if !defined (__APPLE__) && !defined (__linux__)

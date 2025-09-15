@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/metesepetcioglu/Documents/EspressifIDE_Workspace/210.APB.BTN/main
+# Install script for directory: C:/Users/metesepetcioglu/Documents/EspressifIDE_Workspace/210.APB.BTN(esp32_webserver_017)/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

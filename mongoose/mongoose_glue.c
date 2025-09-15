@@ -38,14 +38,18 @@ bool SettingsPageSystemInfoRequest = false;
 bool SettingsPageWifiSettingsRequest = false;
 bool AudioConfigurationPageRequest = false;
 bool CalendarPageRequest = false;
+bool SettingsPageLoginInfoChange = false;
+bool isClearSDFiles = false;
+bool NetworkSettingsPageRequest = false;
 extern volatile float volume_factor;
 extern bool StopPlayWav;
 
+char admin_name[30] = "admin"; // Admin name and password is stucked in here.
+char admin_password[30] = "!ntetrAPB_5";
 
-char user_name[30];
-char user_password[30];
-char admin_name[30];
-char admin_password[30];
+struct security s_security;
+bool isOtaDone = false;
+
 
 
 // Authenticate user/password. Return access level for the authenticated user:
@@ -53,10 +57,10 @@ char admin_password[30];
 //   1,2,3... - authentication success. Higher levels are more privileged than lower
 int glue_authenticate(const char *user, const char *pass) {
   int level = 0; // Authentication failure
-  if (strcmp(user, "admin") == 0 && strcmp(pass, "admin") == 0) {
+  if (strcmp(user, admin_name) == 0 && strcmp(pass, admin_password) == 0) {
     level = 7;  // Administrator
-  } else if (strcmp(user, "user") == 0 && strcmp(pass, "user") == 0) {
-    level = 3;  // Ordinary dude
+  } else if (strcmp(user, s_security.userName) == 0 && strcmp(pass, s_security.password) == 0) {
+    level = 7;  //3;  // Ordinary dude
   }
   return level;
 }
@@ -84,7 +88,7 @@ void *glue_upload_open_file_upload(char *file_name, size_t total_size) {
   char path[128], *p = NULL;
   FILE *fp = NULL;
   if ((p = strrchr(file_name, '/')) == NULL) p = file_name;
-  mg_snprintf(path, sizeof(path), "/tmp/%s", p);
+  mg_snprintf(path, sizeof(path), "/sdcard/%s", p);
 #if MG_ENABLE_POSIX_FS
   fp = fopen(path, "w+b");
 #endif
@@ -108,12 +112,31 @@ bool glue_upload_write_file_upload(void *fp, void *buf, size_t len) {
 #endif
 }
 
- struct deleteFile s_deleteFile = {""};
+struct deleteFile s_deleteFile = {""};
 void glue_get_deleteFile(struct deleteFile *data) {
   *data = s_deleteFile;  // Sync with your device
 }
+
+bool isDeleteFile = false;
+
+
 void glue_set_deleteFile(struct deleteFile *data) {
   s_deleteFile = *data; // Sync with your device
+  char full_file_path[64] = {0};  // Adjust size if needed
+  // Construct full path
+  snprintf(full_file_path, sizeof(full_file_path), "/sdcard/%s", s_deleteFile.fileName);
+  printf("Sayim oynatiliyor: %s\n", full_file_path);
+  
+  isDeleteFile = DeleteSDFile(full_file_path);
+  
+  
+  if(isDeleteFile == false)
+  {
+	  printf("Dosya silinemedi: %s\n", full_file_path);
+	  
+  } else {
+      printf("Dosya basariyla silindi: %s\n", full_file_path);
+  }
   
 }
 
@@ -284,12 +307,31 @@ void glue_set_holidays(struct holidays *data) {
 }
 
 
-static struct network_settings s_network_settings = {"192.168.0.42", "192.168.0.1", "255.255.255.0", true};
+struct network_settings s_network_settings;
 void glue_get_network_settings(struct network_settings *data) {
   *data = s_network_settings;  // Sync with your device
 }
 void glue_set_network_settings(struct network_settings *data) {
-  s_network_settings = *data; // Sync with your device
+    s_network_settings = *data; // Sync with your device
+  
+    // Define edilmiş default IP bilgilerini güncelle
+    snprintf(s_network_settings.ip_address, sizeof(s_network_settings.ip_address), DEVICE_WIFI_AP_IP);
+    snprintf(s_network_settings.gw_address, sizeof(s_network_settings.gw_address), DEVICE_WIFI_AP_GATEWAY);
+    snprintf(s_network_settings.netmask, sizeof(s_network_settings.netmask), DEVICE_WIFI_AP_NETMASK);
+
+    // Varsayılan olarak DHCP'yi kapat
+    s_network_settings.dhcp = false;
+    
+      // Flash’a yazma task’ını tetikle
+    NetworkSettingsPageRequest = true;
+    StopIO_Threat = true;
+
+    printf("Network ayarlari guncellendi: ip=%s, gw=%s, netmask=%s, dhcp=%d\n",
+            s_network_settings.ip_address,
+            s_network_settings.gw_address,
+            s_network_settings.netmask,
+            s_network_settings.dhcp);
+           
 }
 
 void *glue_ota_begin_firmware_update(char *file_name, size_t total_size) {
@@ -299,6 +341,7 @@ void *glue_ota_begin_firmware_update(char *file_name, size_t total_size) {
 }
 bool glue_ota_end_firmware_update(void *context) {
   mg_timer_add(&g_mgr, 500, 0, (void (*)(void *)) (void *) mg_ota_end, context);
+  isOtaDone = true;
   return true;
 }
 bool glue_ota_write_firmware_update(void *context, void *buf, size_t len) {
@@ -310,17 +353,25 @@ static struct reset s_reset = {false};
 void glue_get_reset(struct reset *data) {
   *data = s_reset;  // Sync with your device
 }
+
+
 void glue_set_reset(struct reset *data) {
   s_reset = *data; // Sync with your device
+  ClearAllSDFiles();
+  ClearConfigsFromFlash();
+  esp_restart();
 }
 
-static struct security s_security = {"user", "user"};
 void glue_get_security(struct security *data) {
   *data = s_security;  // Sync with your devic
- 
 }
+
+
 void glue_set_security(struct security *data) {
   s_security = *data; // Sync with your device
+  SettingsPageLoginInfoChange = true;
+  printf("SettingsPageLoginInfoChange=true\n");
+  StopIO_Threat = true;
 }
 
 static struct clock_settings s_clock_settings = {false, "192.192.192.192", 1, "GMT+03", false, "30.05.2025 13:45:00", false};
@@ -363,13 +414,13 @@ void glue_get_defaultConfiguration(struct defaultConfiguration *data) {
 void glue_set_defaultConfiguration(struct defaultConfiguration *data) {
 s_defaultConfiguration = *data; // Sync with your device
 printf(("1\n")); 
-
 }
 
- struct alt1Configuration s_alt1Configuration = {true, "", 0, 100, false, true, "", "", 0, 0, 100, true, "", 0, 100, 10, 1, ""};
+struct alt1Configuration s_alt1Configuration = {true, "", 0, 100, false, true, "", "", 0, 0, 100, true, "", 0, 100, 10, 1, ""};
 void glue_get_alt1Configuration(struct alt1Configuration *data) {
   *data = s_alt1Configuration;  // Sync with your device
 }
+
 void glue_set_alt1Configuration(struct alt1Configuration *data) {
 s_alt1Configuration = *data; // Sync with your device
 printf("Alt1ConfigFlashWrite=true\n");
@@ -377,7 +428,7 @@ Alt1ConfigFlashWrite = true;
 printf(("2\n"));
 }
 
- struct alt2Configuration s_alt2Configuration = {true, "", 0, 100, false, true, "", "", 0, 0, 100, true, "", 0, 100, 10, 1, ""};
+struct alt2Configuration s_alt2Configuration = {true, "", 0, 100, false, true, "", "", 0, 0, 100, true, "", 0, 100, 10, 1, ""};
 void glue_get_alt2Configuration(struct alt2Configuration *data) {
   *data = s_alt2Configuration;  // Sync with your device
 }
@@ -457,7 +508,7 @@ void glue_set_playSound(struct playSound *data) {
 }
 
 
-struct audioConfig s_audioConfig = {"Default30.wav", "Default29.wav", "Default28.wav", "Default27.wav", "Default26.wav", "Default25.wav", "Default24.wav", "Default23.wav", "Default22.wav", "Default21.wav", "Default20.wav", "Default19.wav", "Default18.wav", "Default17.wav", "Default16.wav", "Default15.wav", "Default14.wav", "Default13.wav", "Default12.wav", "Default11.wav", "Default10.wav", "Default9.wav", "Default8.wav", "Default7.wav", "Default6.wav", "Default5.wav", "Default4.wav", "Default3.wav", "Default2.wav", "Default1.wav"};
+struct audioConfig s_audioConfig;
 void glue_get_audioConfig(struct audioConfig *data) {
   *data = s_audioConfig;  // Sync with your device
 }

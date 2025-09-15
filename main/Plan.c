@@ -70,7 +70,7 @@ void GetCurrentPlan(void)
     } else {
         CurrentPlan = planChar;
     }
-    printf( "%c\n", CurrentPlan);
+    // printf( "%c\n", CurrentPlan);
     
     GetCurrentConfiguration();
 }

@@ -275,7 +275,7 @@ void ResetAllTrafficVariables(void)
 * Output        			: None
 * Return        			: None
 *******************************************************************************/
-void DetectGreenFeedback(void) 
+void DetectGreenFeedback(void)
 {
     // 1. Seviye okuma ve debounce
     int raw_level = gpio_get_level(Green_FB_Input_Pin);

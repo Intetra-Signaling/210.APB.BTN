@@ -13,17 +13,17 @@
 
 
 
-void ProcessThread(void *arg);
 
 void TimerCallback_50ms(TimerHandle_t xTimer);
 void TimerCallback_500ms(TimerHandle_t xTimer);
 void TimerCallback_1000ms(TimerHandle_t xTimer);
 void Timer_Threads_Init(void);
 void mongoose_task(void *pvParameters);
-void play_wav_task(void *pvParameters);
+void PlayWav_Task(void *pvParameters);
 void stopTestModeThread(TimerHandle_t xTimer);
 void stopTestMode(void);
 void FlashWrite_task(void *pvParameters);
+void Process_Thread(void *arg);
 void init_nvs_mutex(void);
 void IO_Task(void *pvParameters);
 void suspend_all_tasks_for_ota(void);

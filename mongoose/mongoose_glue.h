@@ -396,6 +396,8 @@ extern struct alt1Configuration s_alt1Configuration;
 extern struct alt2Configuration s_alt2Configuration; 
 extern struct alt3Configuration s_alt3Configuration;
 extern struct audioConfig s_audioConfig;
+extern struct security s_security;
+
 
 extern struct sunday s_sunday;
 extern struct monday s_monday;
@@ -411,6 +413,7 @@ extern bool Alt1ConfigFlashWrite;
 extern bool Alt2ConfigFlashWrite;
 extern bool Alt3ConfigFlashWrite;
 extern struct playSound s_playSound;
+extern struct network_settings s_network_settings;
 
 struct configuration {
   bool isIdleActive;

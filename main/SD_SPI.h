@@ -40,4 +40,7 @@ bool is_sd_card_mounted();
 void mg_sd_card_test(void);
 void CheckSDFiles(char *json_buffer, size_t buffer_size);
 void checkFileName(const char *filename);
+bool DeleteSDFile(const char *file_path);
+bool ClearAllSDFiles(void);
+
 #endif /* MAIN_SD_SPI_H_ */

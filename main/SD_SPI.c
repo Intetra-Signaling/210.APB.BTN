@@ -524,7 +524,13 @@ void CheckSDFiles(char *json_buffer, size_t buffer_size) {
     }
 }
 
-
+/*******************************************************************************
+* Function Name  			: None
+* Description    			: None
+* Input         			: None
+* Output        			: None
+* Return        			: None
+*******************************************************************************/
 void checkFileName(const char *filename) {
     char full_path[256];
     snprintf(full_path, sizeof(full_path), "/sdcard/%s", filename);
@@ -552,3 +558,150 @@ void checkFileName(const char *filename) {
         }
     }
 }
+
+/*******************************************************************************
+* Function Name  			: DeleteSDFile
+* Description    			: Deletes a file from the SD card (protects default_ files)
+* Input         			: file_path - path to the file to be deleted
+* Output        			: None
+* Return        			: true if file deleted successfully, false otherwise
+*******************************************************************************/
+bool DeleteSDFile(const char *file_path)
+{
+    if (file_path == NULL) {
+        ESP_LOGE(TAGSD, "File path is NULL");
+        return false;
+    }
+
+    ESP_LOGI(TAGSD, "Attempting to delete file %s", file_path);
+    
+    // Extract filename from path
+    const char *filename = strrchr(file_path, '/');
+    if (filename == NULL) {
+        filename = file_path; // No path separator, use full string as filename
+    } else {
+        filename++; // Skip the '/' character
+    }
+    
+    // Check if filename starts with "default_"
+    if (strncmp(filename, "default_", 8) == 0) {
+        ESP_LOGW(TAGSD, "Cannot delete protected file (starts with 'default_'): %s", file_path);
+        return false;
+    }
+    
+    // Check if file exists before attempting to delete
+    FILE *f = fopen(file_path, "r");
+    if (f == NULL) {
+        ESP_LOGE(TAGSD, "File does not exist: %s", file_path);
+        return false;
+    }
+    fclose(f);
+    
+    // Delete the file
+    if ((remove(file_path) == 0)) {
+        ESP_LOGI(TAGSD, "File deleted successfully: %s", file_path);
+        return true;
+    } else {
+        ESP_LOGE(TAGSD, "Failed to delete file: %s", file_path);
+        return false;
+    }
+}
+
+
+/*******************************************************************************
+* Function Name  			: ClearAllSDFiles
+* Description    			: Deletes specific file types from SD card except those starting with "default_"
+* Input         			: None
+* Output        			: None
+* Return        			: true if operation completed successfully, false otherwise
+*******************************************************************************/
+bool ClearAllSDFiles(void)
+{
+    DIR *dir;
+    struct dirent *entry;
+    char file_path[128];
+    bool success = true;
+    int deleted_count = 0;
+    int protected_count = 0;
+    int skipped_count = 0;
+    int error_count = 0;
+    
+    // File extensions to delete (add/remove as needed)
+    const char* target_extensions[] = {
+        ".txt", ".wav", ".mp3", ".bin", ".log", ".dat", ".cfg"
+    };
+    size_t num_extensions = sizeof(target_extensions) / sizeof(target_extensions[0]);
+    
+    ESP_LOGI(TAGSD, "SD kart temizleme islemi baslatiliyor...");
+    
+    // Open SD card root directory
+    dir = opendir("/sdcard");
+    if (dir == NULL) {
+        ESP_LOGE(TAGSD, "SD kart dizini acilamadi");
+        return false;
+    }
+    
+    // Read all entries in the directory
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip directories
+        if (entry->d_type == DT_DIR) {
+            continue;
+        }
+        
+        // Check if filename starts with "default_"
+        if (strncmp(entry->d_name, "default_", 8) == 0) {
+            ESP_LOGW(TAGSD, "Korunan dosya atlaniyor: %s", entry->d_name);
+            protected_count++;
+            continue;
+        }
+        
+        // Check if file has target extension
+        bool should_delete = false;
+        char *file_ext = strrchr(entry->d_name, '.');
+        if (file_ext != NULL) {
+            for (int i = 0; i < num_extensions; i++) {
+                if (strcasecmp(file_ext, target_extensions[i]) == 0) {
+                    should_delete = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!should_delete) {
+            ESP_LOGD(TAGSD, "Desteklenmeyen dosya tipi atlaniyor: %s", entry->d_name);
+            skipped_count++;
+            continue;
+        }
+        
+        // Construct full file path
+		if (snprintf(file_path, sizeof(file_path), "/sdcard/%s", entry->d_name) >= sizeof(file_path)) {
+		    ESP_LOGE(TAGSD, "Dosya yolu tasma yapti: %s", entry->d_name);
+		    error_count++;
+		    success = false;
+		    continue;
+		}
+        
+        // Delete the file
+        if (remove(file_path) == 0) {
+            ESP_LOGI(TAGSD, "Dosya silindi: %s", entry->d_name);
+            deleted_count++;
+        } else {
+            ESP_LOGE(TAGSD, "Dosya silinemedi: %s", entry->d_name);
+            error_count++;
+            success = false;
+        }
+    }
+    
+    // Close directory
+    closedir(dir);
+    
+    // Print summary
+    ESP_LOGI(TAGSD, "SD kart temizleme tamamlandi:");
+    ESP_LOGI(TAGSD, "- Silinen dosya sayisi: %d", deleted_count);
+    ESP_LOGI(TAGSD, "- Korunan dosya sayisi: %d", protected_count);
+    ESP_LOGI(TAGSD, "- Atlanan dosya sayisi: %d", skipped_count);
+    ESP_LOGI(TAGSD, "- Hata alan dosya sayisi: %d", error_count);
+    
+    return success;
+}
+

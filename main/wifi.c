@@ -2,26 +2,7 @@
 #include "esp_system.h"
 #include "mongoose_glue.h"
 static EventGroupHandle_t s_wifi_event_group;
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT BIT1
 
-
-/* WiFi application settings */
-#define WIFI_AP_BEACON_INTERVAL		100										// Access Point beacon: 100 milliseconds recommended
-#define WIFI_AP_IP					"192.168.1.2"							// Access Point default IP
-#define WIFI_AP_GATEWAY				"192.168.1.1"							// Access Point default Gateway (should be the same as the IP)
-#define WIFI_AP_NETMASK				"255.255.255.0"							// Access Point netmask
-#define WIFI_AP_BANDWIDTH			WIFI_BW_HT20							// Access Point bandwidth 20 MHz (40 MHz is the other option)
-#define WIFI_STA_POWER_SAVE			WIFI_PS_NONE							// Power save not used
-#define MAX_SSID_LENGTH				32										// IEEE standard maximum
-#define MAX_PASSWORD_LENGTH			64										// IEEE standard maximum
-#define MAX_CONNECTION_RETRIES		1000u									// Retry number on disconnect
-#define WIFI_CHANNEL 1
-#define MAX_STA_CONN 4
-#define WIFI_SSID_PREFIX "ESP32_AP_"
-#define WIFI_PASS "12345678"
-#define MAX_SSID_LENGTH 32
-#define WIFI_STARTED_BIT BIT0
 esp_netif_t* esp_netif_ap  = NULL;
 extern TaskHandle_t mongoose_task_handle;
 bool WifiConnectedFlag = false;
@@ -252,9 +233,9 @@ void wifi_init_ap(void) {
 
 	esp_netif_dhcps_stop(esp_netif_ap);					///> must call this first
 
-	inet_pton(AF_INET, WIFI_AP_IP, &ap_ip_info.ip);		///> Assign access point's static IP, GW, and netmask
-	inet_pton(AF_INET, WIFI_AP_GATEWAY, &ap_ip_info.gw);
-	inet_pton(AF_INET, WIFI_AP_NETMASK, &ap_ip_info.netmask);
+	inet_pton(AF_INET, DEVICE_WIFI_AP_IP, &ap_ip_info.ip);		///> Assign access point's static IP, GW, and netmask
+	inet_pton(AF_INET, DEVICE_WIFI_AP_GATEWAY, &ap_ip_info.gw);
+	inet_pton(AF_INET, DEVICE_WIFI_AP_NETMASK, &ap_ip_info.netmask);
 
 
     if (strlen(WIFI_PASS) == 0) {
@@ -378,9 +359,9 @@ void wifi_init_ap_mg(void) {
 
 	esp_netif_dhcps_stop(esp_netif_ap);					///> must call this first
 
-	inet_pton(AF_INET, WIFI_AP_IP, &ap_ip_info.ip);		///> Assign access point's static IP, GW, and netmask
-	inet_pton(AF_INET, WIFI_AP_GATEWAY, &ap_ip_info.gw);
-	inet_pton(AF_INET, WIFI_AP_NETMASK, &ap_ip_info.netmask);
+	inet_pton(AF_INET, DEVICE_WIFI_AP_IP, &ap_ip_info.ip);		///> Assign access point's static IP, GW, and netmask
+	inet_pton(AF_INET, DEVICE_WIFI_AP_GATEWAY, &ap_ip_info.gw);
+	inet_pton(AF_INET, DEVICE_WIFI_AP_NETMASK, &ap_ip_info.netmask);
 
 
     if (strlen(WIFI_PASS) == 0) {

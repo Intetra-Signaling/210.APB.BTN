@@ -25,4 +25,6 @@ void CheckInternalFlash(void);
 esp_err_t loadConfigurationsFromFlash(void);
 void loadWifiSettings(void);
 void glue_load_combinedConfiguration();
+bool ClearConfigsFromFlash(void);
+
 #endif /* MAIN_FLASHCONFIG_H_ */

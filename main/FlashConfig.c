@@ -14,7 +14,7 @@ extern struct defaultConfiguration s_defaultConfiguration;
 extern struct alt1Configuration s_alt1Configuration; 
 extern struct alt2Configuration s_alt2Configuration; 
 extern struct alt3Configuration s_alt3Configuration; 
-
+extern struct network_settings s_network_settings;
 /*******************************************************************************
 * Function Name              : writeFlash
 * Description                : Writes data to flash memory
@@ -185,6 +185,14 @@ esp_err_t loadConfigurationsFromFlash(void)
     if(readFlash("audio_configs", &s_audioConfig, &required_size) != ESP_OK)
     {
         printf("Using DEFAULT values for audio_configs\n");
+       	
+	    s_audioConfig = (struct audioConfig){
+	        "-", "-", "-", "-", "-", "-", "-", "-", "-", 
+	        "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", 
+	        "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", 
+	        "-"
+	    };
+        
         ret = ESP_FAIL;
     }
     // 8. Load calendar configurations
@@ -208,6 +216,19 @@ esp_err_t loadConfigurationsFromFlash(void)
         printf("Using DEFAULT values for tuesday\n");
         ret = ESP_FAIL;
     }
+    
+     // Flash'tan network ayarlarını okumaya çalış
+    if (readFlash("network_settings", &s_network_settings, &required_size) != ESP_OK) {
+        printf("Using DEFAULT values for network_settings\n");
+
+        // Default değerleri ata
+        snprintf(s_network_settings.ip_address, sizeof(s_network_settings.ip_address), DEVICE_WIFI_AP_IP);
+        snprintf(s_network_settings.gw_address, sizeof(s_network_settings.gw_address), DEVICE_WIFI_AP_GATEWAY);
+        snprintf(s_network_settings.netmask, sizeof(s_network_settings.netmask), DEVICE_WIFI_AP_NETMASK);
+        s_network_settings.dhcp = false;
+    }
+    
+    
 
     required_size = sizeof(struct wednesday);
     if(readFlash("wednesday", &s_wednesday, &required_size) != ESP_OK)
@@ -243,7 +264,15 @@ esp_err_t loadConfigurationsFromFlash(void)
         printf("Using DEFAULT values for holidays\n");
         ret = ESP_FAIL;
     }
-
+    
+    required_size = sizeof(struct security);
+    if(readFlash("user_name_pass", &s_security, &required_size) != ESP_OK)
+    {
+        printf("Using DEFAULT values for user_name_pass\n");
+        strcpy(s_security.userName, "user");
+        strcpy(s_security.password, "user");
+        ret = ESP_FAIL;
+    }
     return ret;
     
 }
@@ -323,5 +352,100 @@ void convert_config_to_alt3(struct configuration *src, struct alt3Configuration 
   strcpy(dest->greenAction, src->greenAction);
 }
 
+/*******************************************************************************
+* Function Name  			: ClearConfigsFromFlash
+* Description    			: Clears all configuration data from NVS flash memory
+* Input         			: None
+* Output        			: None
+* Return        			: true if all data cleared successfully, false otherwise
+*******************************************************************************/
+bool v1_ClearConfigsFromFlash(void)
+{
+    bool success = true;
+    esp_err_t ret;
+    nvs_handle_t nvs_handle;
+    
+    printf("Starting to clear all configurations from flash...\n");
+    
+    // Open NVS
+    ret = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+    if (ret != ESP_OK) {
+        printf("Error opening NVS handle: %s\n", esp_err_to_name(ret));
+        return false;
+    }
+    
+    // Configuration keys to clear
+    const char* config_keys[] = {
+        "defconf", "alt1conf", "alt2conf", "alt3conf",
+        "device_name", "device_comment", "audio_configs",
+        "sunday", "monday", "tuesday", "wednesday", 
+        "thursday", "friday", "saturday", "holidays",
+        "user_name_pass"
+    };
+    
+    size_t num_keys = sizeof(config_keys) / sizeof(config_keys[0]);
+    
+    // Erase each key
+    for (int i = 0; i < num_keys; i++) {
+        ret = nvs_erase_key(nvs_handle, config_keys[i]);
+        if (ret == ESP_OK) {
+            printf("Successfully cleared %s from flash\n", config_keys[i]);
+        } else if (ret == ESP_ERR_NVS_NOT_FOUND) {
+            printf("Key %s not found in flash (already cleared)\n", config_keys[i]);
+        } else {
+            printf("Failed to clear %s from flash: %s\n", config_keys[i], esp_err_to_name(ret));
+            success = false;
+        }
+    }
+    
+    // Commit changes
+    ret = nvs_commit(nvs_handle);
+    if (ret != ESP_OK) {
+        printf("Error committing NVS changes: %s\n", esp_err_to_name(ret));
+        success = false;
+    }
+    
+    // Close NVS
+    nvs_close(nvs_handle);
+    
+    if (success) {
+        printf("All configurations cleared from flash successfully\n");
+    } else {
+        printf("Some configurations could not be cleared from flash\n");
+    }
+    
+    return success;
+}
 
+bool ClearConfigsFromFlash(void)
+{
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE("FLASH", "nvs_open basarisiz: %s", esp_err_to_name(err));
+        return false;
+    }
 
+    ESP_LOGW("FLASH", "Tum konfigurasyonlar siliniyor (namespace=storage)...");
+
+    // Tüm key–value çiftlerini sil
+    err = nvs_erase_all(nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE("FLASH", "nvs_erase_all basarisiz: %s", esp_err_to_name(err));
+        nvs_close(nvs_handle);
+        return false;
+    }
+
+    // Değişiklikleri commit et
+    err = nvs_commit(nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE("FLASH", "nvs_commit basarisiz: %s", esp_err_to_name(err));
+        nvs_close(nvs_handle);
+        return false;
+    }
+
+    nvs_close(nvs_handle);
+
+    ESP_LOGI("FLASH", "Tum konfigurasyonlar basariyla silindi.");
+    return true;
+}

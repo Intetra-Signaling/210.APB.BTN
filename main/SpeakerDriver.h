@@ -43,4 +43,7 @@ void play_countdown_audio(int countdown_value);
 void play_wav_counter(const char* filename);
 void play_wav_idle(const char *file_path);
 void play_wav_dac(const char* path);
+void play_wav_blocking(const char* filename);
+bool is_audio_hardware_busy();
+void start_audio_playback(const char* file_path, float duration);
 #endif /* MAIN_SPEAKERDRIVER_H_ */

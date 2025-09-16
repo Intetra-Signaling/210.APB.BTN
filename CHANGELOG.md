@@ -2,6 +2,11 @@
 
 Bu proje altında yapılan tüm geliştirmeler bu dosyada dokümente edilecektir.
 
+## [v.0.0.0.2] - 16.09.2025
+
+- READ.ME guncellendi.
+- Doxygen yapisina gecildi.
+
 ## [v.0.0.0.1] - 15.09.2025
 
 - glue_set_network_settings endpoint'i tamamlandi. 

@@ -2,7 +2,18 @@
  * DetectTraffic.c
  *
  *  Created on: 18 Nis 2025
- *      Author: metesepetcioglu
+ *
+ * @file
+ * @brief Provides API functions to detect, debounce, and track traffic signal inputs and pedestrian requests.
+ *
+ * This module manages the detection and debouncing of various traffic-related inputs (signal feedback, pedestrian demand, etc.).
+ * It provides safe input sampling with majority voting, state tracking, timing analysis, and specialized event handling for traffic systems.
+ * All key operations for interacting with traffic input data are implemented here.
+ *
+ * @company    INTETRA
+ * @version    v.0.0.0.1
+ * @creator    Mete SEPETCIOGLU
+ * @update     Mete SEPETCIOGLU
  */
 
 #include "main.h"
@@ -69,14 +80,15 @@ InputDebounce_t User_button_input = {
 };
 
 
-/*******************************************************************************
-* Function Name  			: GPIO_Init
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
 
+/**
+ * @brief      Initializes the GPIO pins for input usage.
+ *
+ * @details
+ * Configures the specified GPIO pins as inputs without pull-up or pull-down resistors and disables interrupts.
+ * The pins are set using a bit mask for Red_FB_Input_Pin, Green_FB_Input_Pin, Demand_Input_Pin, No_Demand_Input_Pin, and Button_Input_Pin.
+ * Modify the pull-up or pull-down settings as needed for your hardware requirements.
+ */
 void GPIO_Init(void)
 {
 	 // GPIO konfigürasyonu
@@ -91,13 +103,17 @@ void GPIO_Init(void)
 }
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+ 
+ /**
+ * @brief      Detects and debounces the feedback signal from a GPIO input.
+ *
+ * @param[in,out] input Pointer to an InputDebounce_t structure containing pin information, label, and sample flags.
+ *
+ * @details
+ * This function reads the raw state of the specified GPIO pin and updates a rolling window of the last three sampled states
+ * in the input structure. It prints debug information showing previous and new samples, as well as the majority decision.
+ * The majority logic (2 out of 3 samples high) is used to determine the debounced level.
+ */
 void DetectFeedBack(InputDebounce_t* input) 
 {
     // Ham GPIO değerini oku
@@ -132,13 +148,24 @@ void DetectFeedBack(InputDebounce_t* input)
            input->label, majority_level, high_count);
 }
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+
+
+/**
+ * @brief      Tracks input requests and measures light/dark periods, flash patterns, and countdowns for a debounced input.
+ *
+ * @param[in,out] input Pointer to an InputDebounce_t structure containing input state and timing information.
+ *
+ * @details
+ * This function detects LOW→HIGH and HIGH→LOW transitions of an input, tracks durations of light and dark periods,
+ * recognizes flash patterns, and manages measurement cycles. It supports steady and flash light detection, calculation
+ * of countdown timers, and synchronization with device status variables. Debug information is printed for each significant event.
+ *
+ * - On LOW→HIGH transition, begins measurement after a valid dark period (≥2000ms), updates state, and manages countdown flags.
+ * - On HIGH→LOW transition, calculates last light duration, detects flash patterns, accumulates flash/steady times, and updates state.
+ * - Ends measurement if the light is off and no transition for >2000ms, then updates countdown values and device status.
+ */
 void TrackInputRequest(InputDebounce_t *input) {
     uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
@@ -237,13 +264,21 @@ void TrackInputRequest(InputDebounce_t *input) {
     }
 }
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+
+
+/**
+ * @brief      Initializes the InputDebounce_t structure for an input signal.
+ *
+ * @param[in,out] input Pointer to the InputDebounce_t structure to initialize.
+ * @param[in]     label Descriptive label for the input signal (used in debug output).
+ *
+ * @details
+ * This function clears the entire input structure, assigns the label, resets flags,
+ * and configures the system to start in "waiting for dark" mode. All timing and state variables
+ * are set to their default values. Debug output is printed to indicate initialization.
+ */
 void InputDebounce_Init(InputDebounce_t *input, const char* label)
 {
     // Bütün yapıyı temizle
@@ -262,19 +297,34 @@ void InputDebounce_Init(InputDebounce_t *input, const char* label)
     input->countdown_current = 0;
 }
 
+
+
+/**
+ * @brief      Resets all traffic-related input variables to their initial state.
+ *
+ * @details
+ * This function initializes the debouncing structures for both green and red inputs,
+ * assigning their respective labels and resetting all timing and state variables.
+ * It ensures the traffic signal logic starts from a known, clean state.
+ */
 void ResetAllTrafficVariables(void)
 {
 	InputDebounce_Init(&green_input, "GREEN");
     InputDebounce_Init(&red_input, "RED");
  }
  
- /*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+ 
+ 
+ 
+ 
+/**
+ * @brief      Debounces and detects state changes for the green feedback input signal.
+ *
+ * @details
+ * Reads the raw GPIO level for the green feedback pin, updates the rolling sample buffer for debouncing,
+ * uses majority voting (2 out of 3 samples) to determine the new debounced state, and prints a message
+ * if the confirmed state changes.
+ */
 void DetectGreenFeedback(void)
 {
     // 1. Seviye okuma ve debounce
@@ -297,14 +347,18 @@ void DetectGreenFeedback(void)
         printf("[GREEN] Yeni durum: %s\n", new_state ? "HIGH" : "LOW");
     }
 }
- /*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
 
+
+
+
+/**
+ * @brief      Debounces and detects state changes for the red feedback input signal.
+ *
+ * @details
+ * Reads the raw GPIO level for the red feedback pin, updates the rolling sample buffer for debouncing,
+ * uses majority voting (2 out of 3 samples) to determine the new debounced state, and prints a message
+ * if the confirmed state changes.
+ */
 void DetectRedFeedback(void) 
 {
     // 1. Seviye okuma ve debounce
@@ -328,52 +382,18 @@ void DetectRedFeedback(void)
     }
 }
 
-///*******************************************************************************
-//* Function Name  			: None
-//* Description    			: None
-//* Input         			: None
-//* Output        			: None
-//* Return        			: None
-//*******************************************************************************/
-//void DetectRedFeedback(void) 
-//{
-//    // Ham GPIO değerini oku
-//    int raw_level = gpio_get_level(Red_FB_Input_Pin);
-//    
-//    // Debug: Ham değeri yazdır
-//    printf("[RED] RAW GPIO VALUE: %d\n", raw_level);
-//    
-//    // Örnekleme dizisini kaydır
-//    bool prev_samples[3] = {
-//        red_input.level_flags[0],
-//        red_input.level_flags[1], 
-//        red_input.level_flags[2]
-//    };
-//    
-//    red_input.level_flags[0] = red_input.level_flags[1];
-//    red_input.level_flags[1] = red_input.level_flags[2];
-//    red_input.level_flags[2] = (raw_level == 1);
-//
-//    // Debug çıktıları
-//    printf("[RED] ONCEKI ORNEKLER: %d-%d-%d\n", 
-//           prev_samples[0], prev_samples[1], prev_samples[2]);
-//    printf("[RED] YENI ORNEKLER: %d-%d-%d\n", 
-//           red_input.level_flags[0], red_input.level_flags[1], red_input.level_flags[2]);
-//
-//    // Çoğunluk seviyesini hesapla
-//    int high_count = red_input.level_flags[0] + red_input.level_flags[1] + red_input.level_flags[2];
-//    bool majority_level = (high_count >= 2);
-//    
-//    printf("[RED] COGUNLUK KARARI: %d (High count: %d)\n", majority_level, high_count);
-//}
 
- /*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/ 
+ 
+ 
+ /**
+ * @brief      Debounces and monitors the pedestrian demand feedback input signal.
+ *
+ * @details
+ * Reads the raw GPIO level for the pedestrian demand pin, updates the rolling sample buffer for debouncing,
+ * uses majority voting (2 out of 3 samples) to determine the new debounced state, and initializes or updates the state and timing.
+ * Tracks state changes, handles feedback for button requests, and checks for stuck states (HIGH or LOW for too long), logging an alarm if necessary.
+ * Updates the device status with the current button state.
+ */
 void DetectPedestrianDemandFeedback(void) 
 {
     // 1. Seviye okuma ve debounce
@@ -441,13 +461,19 @@ void DetectPedestrianDemandFeedback(void)
 
 
 
- /*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+/**
+ * @brief      Returns the audio file path for a given countdown value (1-30).
+ *
+ * @param[in]  count Countdown value (valid range: 1 to 30).
+ * @return     Pointer to the file path string, or NULL if the count is out of range.
+ *
+ * @details
+ * Copies the audio file paths from s_audioConfig into a static array on first call.
+ * Subsequent calls simply return the path for the requested countdown value.
+ * Array is indexed so that audio_files[1] corresponds to sound1, ... audio_files[30] to sound30.
+ */
 // Dosya isimlerini bir diziye aktaran yardımcı fonksiyon
 const char* get_audio_file_path(uint32_t count) {
     static const char* audio_files[31];

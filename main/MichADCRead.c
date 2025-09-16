@@ -1,9 +1,20 @@
 /*
- * MichADCRead.c
+ * ADCConfig.c
  *
- *  Created on: 15 Nis 2025
- *      Author: metesepetcioglu
+ *  Created on: 16 Eyl 2025
+ *
+ * @file
+ * @brief Provides API functions to initialize, read, and deinitialize the ADC (Analog-to-Digital Converter) for ESP32.
+ *
+ * This module manages ADC operations including continuous and single conversion modes, configuration, sample reading,
+ * averaging for noise reduction, and safe resource management. All key routines for interacting with ADC hardware are implemented here.
+ *
+ * @company    INTETRA
+ * @version    v.0.0.0.1
+ * @creator    Mete SEPETCIOGLU
+ * @update     Mete SEPETCIOGLU
  */
+
 
 #include "MichADCRead.h"
 
@@ -11,108 +22,31 @@ volatile uint32_t g_movingRMS;
 const char *TAGADC = "ADCEXAMPLE";
 TaskHandle_t s_task_handle;
 adc_channel_t channel[1] = {ADC1_CHANNEL_6}; //IO 34
-
 adc_continuous_handle_t adc_handle = NULL;
 uint32_t adc_samples[ADC_SAMPLE_COUNT] = {0};
 uint8_t adc_sample_index = 0;
 uint32_t g_adcAverage = 0;
 
-/*******************************************************************************
-* Function Name  			: ADC thread
-* Description    			: ADC thread
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-void ADC_TASK(void *pvParameters)
-{
-//    esp_err_t ret;
-//    uint32_t ret_num = 0;
-//    uint8_t result[EXAMPLE_READ_LEN] = {0};
-//    memset(result, 0xcc, EXAMPLE_READ_LEN);
-//
-//    s_task_handle = xTaskGetCurrentTaskHandle();
-//    adc_continuous_handle_t handle = NULL;
-//    continuous_adc_init(channel, sizeof(channel) / sizeof(adc_channel_t), &handle);
-//
-//    adc_continuous_evt_cbs_t cbs = {
-//        .on_conv_done = s_conv_done_cb,
-//    };
-//    ESP_ERROR_CHECK(adc_continuous_register_event_callbacks(handle, &cbs, NULL));
-//    ESP_ERROR_CHECK(adc_continuous_start(handle));
-//
-//    // Moving average hesaplama için buffer, sayaç ve toplam değişkenleri
-//    uint32_t rms_buffer[MOVING_SIZE] = {0};
-//    int currentIndex = 0;        // Döngüsel tampon indeksi
-//    int totalSamples = 0;        // Toplam toplanan örnek sayısı
-//    uint64_t rms_sum = 0;        // Son 10 değerin toplamı
-//
-//    while (1) {
-//        // Yeni veri geldiğinde bildirim bekle
-//        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-//
-//        while (1) {
-//            ret = adc_continuous_read(handle, result, EXAMPLE_READ_LEN, &ret_num, 0);
-//            if (ret == ESP_OK) {
-//                int sample_count = ret_num / sizeof(adc_digi_output_data_t);
-//                uint64_t sum_squares = 0;
-//
-//                for (int i = 0; i < sample_count; i++) {
-//                    adc_digi_output_data_t *p = (adc_digi_output_data_t*)&result[i * sizeof(adc_digi_output_data_t)];
-//                    uint32_t data = EXAMPLE_ADC_GET_DATA(p);
-//                    
-//                    // DC offset: 2048 (12-bit ADC için, eğer farklıysa ayarla)
-//                    int32_t value = (int32_t)data - 2048;
-//                    sum_squares += (int64_t)value * value;
-//                }
-//
-//                // RMS hesaplama: √(ortalama kare)
-//                uint32_t currentRMS = sqrt(sum_squares / sample_count);
-//
-//                // Moving average hesaplama (circular buffer)
-//                if(totalSamples < MOVING_SIZE) {
-//                    // Henüz buffer tam dolmadıysa, direkt ekle
-//                    rms_buffer[currentIndex] = currentRMS;
-//                    rms_sum += currentRMS;
-//                    totalSamples++;
-//                } else {
-//                    // Buffer tam dolu: eski değeri çıkar, yeni değeri ekle
-//                    rms_sum -= rms_buffer[currentIndex];
-//                    rms_buffer[currentIndex] = currentRMS;
-//                    rms_sum += currentRMS;
-//                }
-//                
-//                // Döngüsel indeks güncellemesi
-//                currentIndex = (currentIndex + 1) % MOVING_SIZE;
-//                
-//                // Ortalama RMS hesabı (buffer dolduysa MOVING_SIZE'a böl; dolu değilse mevcut örnek sayısına böl)
-//                uint32_t movingRMS = (totalSamples < MOVING_SIZE) ? (rms_sum / totalSamples) : (rms_sum / MOVING_SIZE);
-//                g_movingRMS = movingRMS;
-//                // Terminale logla
-//                adc_digi_output_data_t *p0 = (adc_digi_output_data_t*)&result[0];
-//                uint32_t chan_num = EXAMPLE_ADC_GET_CHANNEL(p0);
-//                ESP_LOGI(TAGADC, "ADC CH:%"PRIu32" - Moving RMS (son 100): %"PRIu32, chan_num, movingRMS);
-//            } else if (ret == ESP_ERR_TIMEOUT) {
-//                break;
-//            }
-//            // Diğer görevler için CPU'yu serbest bırak
-//            vTaskDelay(pdMS_TO_TICKS(10));
-//        }
-//    }
-//
-//    // Bu kısımlar sonsuz döngüye girdiği için çalışmayacak.
-//    ESP_ERROR_CHECK(adc_continuous_stop(handle));
-//    ESP_ERROR_CHECK(adc_continuous_deinit(handle));
-//    vTaskDelete(NULL);
-}
+#define ADC_CHANNEL     ADC1_CHANNEL_6   // GPIO34
+#define ADC_WIDTH_CFG   ADC_WIDTH_BIT_12
+#define ADC_ATTEN_CFG   ADC_ATTEN_DB_12
+static const char *TAG_ADC = "ADC_DRIVER";
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+ 
+ /**
+ * @brief ADC continuous conversion done callback.
+ *
+ * This callback function is called from ISR context when the ADC continuous driver
+ * completes the required number of conversions.
+ *
+ * It notifies the associated FreeRTOS task using vTaskNotifyGiveFromISR.
+ *
+ * @param[in]  handle    ADC continuous driver handle.
+ * @param[in]  edata     Pointer to event data (conversion results, unused here).
+ * @param[in]  user_data User-provided data (unused here).
+ *
+ * @return true if a higher priority task was woken and a context switch should be requested, false otherwise.
+ */
 bool s_conv_done_cb(adc_continuous_handle_t handle, const adc_continuous_evt_data_t *edata, void *user_data)
 {
     BaseType_t mustYield = pdFALSE;
@@ -120,14 +54,21 @@ bool s_conv_done_cb(adc_continuous_handle_t handle, const adc_continuous_evt_dat
     vTaskNotifyGiveFromISR(s_task_handle, &mustYield);
     return (mustYield == pdTRUE);
 }
-
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+ 
+ 
+ /**
+ * @brief Initializes the ADC in continuous conversion mode.
+ *
+ * This function sets up the ADC driver for continuous sampling on the specified channels,
+ * configures the buffer and frame sizes, and applies sampling parameters such as frequency,
+ * conversion mode, output format, attenuation, bit width, and unit for each channel.
+ *
+ * @param[in]  channel      Pointer to array of ADC channel identifiers.
+ * @param[in]  channel_num  Number of channels to configure.
+ * @param[out] out_handle   Pointer to ADC continuous driver handle (will be set by this function).
+ *
+ * @note Uses ESP_ERROR_CHECK for error handling; will abort on failure.
+ */
 void continuous_adc_init(adc_channel_t *channel, uint8_t channel_num, adc_continuous_handle_t *out_handle)
 {
     adc_continuous_handle_t handle = NULL;
@@ -154,15 +95,18 @@ void continuous_adc_init(adc_channel_t *channel, uint8_t channel_num, adc_contin
 
     *out_handle = handle;
 }
-
-
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+ 
+ 
+ /**
+ * @brief Initializes the ADC in continuous conversion mode.
+ *
+ * This function sets up the ADC hardware and driver for continuous sampling.
+ * If the ADC has already been initialized, the function will exit immediately.
+ * It configures the conversion channels, registers event callbacks (here, not used),
+ * and starts continuous ADC sampling using the ESP-IDF ADC driver.
+ *
+ * @note Uses ESP_ERROR_CHECK for error handling; will abort on failure.
+ */
 void InitADC(void) 
 {
     if (adc_handle != NULL) return;  // Zaten başlatıldıysa tekrar başlatma
@@ -176,13 +120,17 @@ void InitADC(void)
     ESP_ERROR_CHECK(adc_continuous_register_event_callbacks(adc_handle, &cbs, NULL));
     ESP_ERROR_CHECK(adc_continuous_start(adc_handle));
 }
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+ 
+ 
+ /**
+ * @brief Deinitializes the ADC continuous conversion driver and releases resources.
+ *
+ * Stops the ADC continuous conversion if it is running, deinitializes the ADC driver,
+ * and releases related resources. If the ADC is already stopped, the function returns immediately.
+ * After cleanup, the global ADC handle is set to NULL.
+ *
+ * @note Logs warnings if stopping or deinitializing fails. 
+ */
 void DeInitADC(void)
 {
     if (adc_handle == NULL) return;  // Zaten durdurulmuşsa işlem yapma
@@ -206,13 +154,15 @@ void DeInitADC(void)
 }
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+/**
+ * @brief Reads a single sample from the ADC in continuous mode.
+ *
+ * Attempts to read one conversion frame from the ADC driver. Checks for read errors and ensures
+ * the returned data is valid. If successful, extracts and returns the ADC data using the
+ * EXAMPLE_ADC_GET_DATA macro. Returns 0 in case of error or invalid data.
+ *
+ * @return The ADC sample value read from the hardware, or 0 on failure.
+ */
 uint32_t ReadADC_Sample(void) {
     uint8_t result[EXAMPLE_READ_LEN] = {0};
     uint32_t ret_num = 0;
@@ -234,22 +184,16 @@ uint32_t ReadADC_Sample(void) {
 }
 
 
-
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-
-#define ADC_CHANNEL     ADC1_CHANNEL_6   // GPIO34
-#define ADC_WIDTH_CFG   ADC_WIDTH_BIT_12
-#define ADC_ATTEN_CFG   ADC_ATTEN_DB_12
-static const char *TAG_ADC = "ADC_DRIVER";
-
-
-// ADC başlatma
+/**
+ * @brief Initializes the ADC in single conversion mode.
+ *
+ * Configures the ADC width and channel attenuation for single sample readings.
+ * If configuration fails, logs an error and triggers an alarm event.
+ *
+ * @note Uses global configuration macros for width and attenuation.
+ *
+ * @return None.
+ */
 void ADC_Read_Init(void)
 {
     esp_err_t ret;
@@ -275,14 +219,30 @@ void ADC_Read_Init(void)
 
 }
 
-// Tek örnek okuma
+
+/**
+ * @brief Reads a single raw sample from the ADC channel.
+ *
+ * Retrieves one raw conversion value from the configured ADC channel using single mode.
+ *
+ * @return The raw ADC sample value.
+ */
 uint32_t ADC_Read_Sample(void)
 {
     return adc1_get_raw(ADC_CHANNEL);
 }
 
-// Ortalama değer okuma (mikrofon gürültüsünü azaltmak için)
-uint32_t ADC_Read_Average(uint16_t samples)
+
+
+/**
+ * @brief Reads and returns the average value of multiple ADC samples.
+ *
+ * Obtains a specified number of raw ADC samples from the configured channel and computes their average.
+ * This method helps reduce noise (e.g., microphone input) by averaging.
+ *
+ * @param[in] samples Number of samples to read and average.
+ * @return Averaged ADC value, or 0 if samples is zero.
+ */uint32_t ADC_Read_Average(uint16_t samples)
 {
     uint64_t sum = 0;
     for (uint16_t i = 0; i < samples; i++) {

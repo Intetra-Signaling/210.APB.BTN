@@ -93,4 +93,8 @@ void eth_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, 
 void got_ip_event_handler(void *arg, esp_event_base_t event_base,int32_t event_id, void *event_data);
 esp_err_t ETHapp_main(void);
 extern bool EthConnectedFlag;
+void eth_reset_pin_init(void);
+void eth_reset_pin_set_high(void);
+void eth_reset_pin_set_low(void);
+
 #endif /* MAIN_ETHERNET_INIT_H_ */

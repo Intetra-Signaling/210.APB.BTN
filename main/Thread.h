@@ -20,8 +20,6 @@ void TimerCallback_1000ms(TimerHandle_t xTimer);
 void Timer_Threads_Init(void);
 void mongoose_task(void *pvParameters);
 void PlayWav_Task(void *pvParameters);
-void stopTestModeThread(TimerHandle_t xTimer);
-void stopTestMode(void);
 void FlashWrite_task(void *pvParameters);
 void Process_Thread(void *arg);
 void init_nvs_mutex(void);
@@ -46,7 +44,5 @@ extern bool ui8_idleContAfterReq;
 extern bool ui8_isReqActive; 
 extern bool ui8_isGreenActive;
 extern uint8_t RequestSoundPlaybackPeriod;
-extern  SemaphoreHandle_t s_nvs_global_mutex; 
 extern char *TAG_GLUE; 
-extern  SemaphoreHandle_t xFlashMutex;
 #endif /* MAIN_THREAD_H_ */

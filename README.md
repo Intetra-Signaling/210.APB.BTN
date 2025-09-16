@@ -12,3 +12,16 @@ Web arayüzü üzerinden aşağıdaki işlemler kolaylıkla gerçekleştirilebil
 - IP ve saat ayarlarını güncelleme
 
 Geliştirilen bu arayüz sayesinde, cihazın tüm gerekli ayarları kullanıcı dostu bir şekilde yapılabilmektedir.
+
+
+## Kullanıcı Hesapları
+
+|---------------|-----------------|-----------------------------------------------|
+| Kullanıcı Adı | Şifre           | Açıklama                                      |
+|---------------|-----------------|-----------------------------------------------|
+| user          | user            | Varsayılan kullanıcı (şifre değiştirilebilir) |
+|---------------|-----------------|-----------------------------------------------|
+| admin         | !ntetrAPB_5     | Sabit yönetici hesabı (şifre değiştirilemez)  |
+|---------------|-----------------|-----------------------------------------------|
+
+> **Not:** `user` hesabının şifresi web arayüzünden değiştirilebilir, ancak `admin` hesabı ve şifresi sabittir ve değiştirilemez.

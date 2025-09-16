@@ -2,9 +2,20 @@
  * ethernet_init.c
  *
  *  Created on: 7 Mar 2025
- *      Author: metesepetcioglu
+ *
+ * @file
+ * @brief Provides API functions for initializing, deinitializing, and handling Ethernet interface events.
+ *
+ * This module manages the setup and control of Ethernet hardware, including GPIO configuration for reset,
+ * event handling for connection state changes, and initialization/deinitialization of Ethernet drivers.
+ * Supports error handling, alarm logging, and integration with WiFi fallback logic.
+ *
+ * @company    INTETRA
+ * @version    v.0.0.0.1
+ * @creator    Mete SEPETCIOGLU
+ * @update     Mete SEPETCIOGLU
  */
-
+ 
 #include "ethernet_init.h"
 #include "wifi.h"
 #include "Alarms.h"
@@ -142,13 +153,7 @@ err:
  * @return
  *          - ESP_OK on success
  */
- /*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
 static esp_err_t spi_bus_init(void)
 {
     esp_err_t ret = ESP_OK;
@@ -196,13 +201,6 @@ static esp_err_t spi_bus_init(void)
  *          - NULL if init failed
  */
  
- /*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/ 
 static esp_eth_handle_t eth_init_spi(spi_eth_module_config_t *spi_eth_module_config, 
                                    esp_eth_mac_t **mac_out, esp_eth_phy_t **phy_out) 
 {
@@ -260,13 +258,26 @@ static esp_eth_handle_t eth_init_spi(spi_eth_module_config_t *spi_eth_module_con
 }
 #endif // CONFIG_EXAMPLE_USE_SPI_ETHERNET
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+/**
+ * @brief      Initializes available Ethernet interfaces and returns their handles.
+ *
+ * @param[out] eth_handles_out Pointer to array of Ethernet handle pointers (allocated if interfaces found).
+ * @param[out] eth_cnt_out     Pointer to number of initialized Ethernet interfaces.
+ * @return     ESP_OK on success, or error code on failure.
+ *
+ * @details
+ * This function checks configuration flags to initialize internal and/or SPI Ethernet interfaces. Handles are
+ * allocated dynamically and returned via `eth_handles_out`. Each interface is initialized and counted. If no 
+ * interfaces are successfully initialized, output pointers are set to NULL/0 and memory is freed. 
+ * Initialization failures (hardware not present, SPI bus issues, memory allocation issues) are logged via ESP_LOGW.
+ * Cleans up memory on error.
+ *
+ * Usage:
+ * - Call with pointers to output array and count variables.
+ * - After use, free the handles array if not NULL.
+ */
 esp_err_t example_eth_init(esp_eth_handle_t *eth_handles_out[], uint8_t *eth_cnt_out) {
     esp_err_t ret = ESP_OK;
     esp_eth_handle_t *eth_handles = NULL;
@@ -335,6 +346,19 @@ err:
 #endif
 }
 
+
+
+/**
+ * @brief      Deinitializes all Ethernet interfaces and releases their resources.
+ *
+ * @param[in]  eth_handles Array of Ethernet handle pointers to deinitialize.
+ * @param[in]  eth_cnt     Number of Ethernet handles in the array.
+ * @return     ESP_OK on success, or error code on failure.
+ *
+ * @details
+ * Iterates through all provided Ethernet handles, uninstalls their drivers, and deletes MAC/PHY instances if present.
+ * Ensures all resources are released. Returns an error if the input handle array is NULL or if driver uninstall fails.
+ */
 esp_err_t example_eth_deinit(esp_eth_handle_t *eth_handles, uint8_t eth_cnt)
 {
     ESP_RETURN_ON_FALSE(eth_handles != NULL, ESP_ERR_INVALID_ARG, TAG_ETH, "array of Ethernet handles cannot be NULL");
@@ -370,16 +394,8 @@ esp_err_t example_eth_deinit(esp_eth_handle_t *eth_handles, uint8_t eth_cnt)
 
  const char *TAG = "eth_example";
 
-/** Event handler for Ethernet events */
- 
-// **Ethernet Event Handler**
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
 void eth_event_handler(void *arg, esp_event_base_t event_base,
                               int32_t event_id, void *event_data) {
     if (event_id == ETHERNET_EVENT_CONNECTED) {
@@ -396,14 +412,21 @@ void eth_event_handler(void *arg, esp_event_base_t event_base,
 }
 }
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-/** Event handler for IP_EVENT_ETH_GOT_IP */
+/**
+ * @brief      Event handler for Ethernet interface state changes.
+ *
+ * @param[in]  arg         User-defined argument (unused).
+ * @param[in]  event_base  Event base identifier (unused).
+ * @param[in]  event_id    Event identifier (ETHERNET_EVENT_CONNECTED or ETHERNET_EVENT_DISCONNECTED).
+ * @param[in]  event_data  Event data (unused).
+ *
+ * @details
+ * Handles Ethernet connection/disconnection events:
+ * - On connection, sets flag, logs info, disables WiFi AP.
+ * - On disconnection, clears flag, logs warning, enables WiFi AP.
+ * - (Optional) Uncomment vTaskResume/vTaskSuspend for mongoose task management.
+ * - Event handler for IP_EVENT_ETH_GOT_IP 
+ */
  void got_ip_event_handler(void *arg, esp_event_base_t event_base,
                                  int32_t event_id, void *event_data)
 {
@@ -419,14 +442,20 @@ void eth_event_handler(void *arg, esp_event_base_t event_base,
 }
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-// **Ethernet Başlatma**
+
+
+/**
+ * @brief      Initializes Ethernet networking stack and event loop.
+ *
+ * @return     ESP_OK on success, or error code on failure.
+ *
+ * @details
+ * This function sets up the ESP networking interface and event loop required for Ethernet operation.
+ * If initialization fails, logs the error and records an alarm. 
+ * - Calls `esp_netif_init()` and checks for errors.
+ * - Calls `esp_event_loop_create_default()`, allowing for already initialized state.
+ * On any error, logs both to ESP logging and the system alarm function.
+ */
 esp_err_t ETHapp_main(void) {
     esp_err_t res;
     
@@ -505,4 +534,48 @@ esp_err_t ETHapp_main(void) {
 #endif
 
     return ESP_OK;
+}
+
+
+/**
+ * @brief      Initializes the Ethernet reset GPIO pin for output.
+ *
+ * @details
+ * Configures the pin defined by CONFIG_ETH_RESET_PIN as a standard output with no pull-up or pull-down resistors, and disables interrupts.
+ * This pin can be used to reset the Ethernet hardware externally.
+ */
+void eth_reset_pin_init(void) {
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << CONFIG_ETH_RESET_PIN),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&io_conf);
+}
+
+
+
+/**
+ * @brief      Sets the Ethernet reset GPIO pin to HIGH level.
+ *
+ * @details
+ * Drives the pin defined by CONFIG_ETH_RESET_PIN to logic high (1).
+ * Typically used to release Ethernet hardware from reset.
+ */
+void eth_reset_pin_set_high(void) {
+    gpio_set_level(CONFIG_ETH_RESET_PIN, 1);
+}
+
+
+/**
+ * @brief      Sets the Ethernet reset GPIO pin to LOW level.
+ *
+ * @details
+ * Drives the pin defined by CONFIG_ETH_RESET_PIN to logic low (0).
+ * Typically used to initiate a hardware reset for Ethernet.
+ */
+void eth_reset_pin_set_low(void) {
+    gpio_set_level(CONFIG_ETH_RESET_PIN, 0);
 }

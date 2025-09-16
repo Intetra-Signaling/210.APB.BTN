@@ -2,7 +2,17 @@
  * SpeakerDriver.c
  *
  *  Created on: 7 Mar 2025
- *      Author: metesepetcioglu
+ *
+ * @file
+ * @brief Provides functions for controlling and driving the speaker hardware.
+ *
+ * This module includes initialization, configuration, and audio output routines for the speaker.
+ * All low-level and high-level operations for sound generation and control are managed here.
+ *
+ * @company    INTETRA
+ * @version    v.0.0.0.1
+ * @creator    Mete SEPETCIOGLU
+ * @update     Mete SEPETCIOGLU
  */
 
 #include "SpeakerDriver.h"
@@ -18,8 +28,7 @@
 #include "driver/dac_continuous.h"
 #include <errno.h>     // errno değişkeni
 
-//#include "i2s_stream.h"
-
+  
 
 i2s_chan_handle_t tx_handle;
 
@@ -37,16 +46,31 @@ volatile bool is_counter_voice_played;
 volatile bool is_voice_played;
 #define WAV_FILE_PATH "/sdcard/%d.wav"
 #define BUFFER_SIZE_I2S      4096    
-    
+#define DAC_CHANNEL_1_GPIO 25
+static const char *TAG_DAC = "WAV_PLAYER";
+#define DAC_OUTPUT_PIN DAC_CHAN_0_GPIO_NUM // DAC_CHAN_0 için GPIO numarası (GPIO25)
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-// ** I2S Başlatma **
+typedef struct {
+    uint32_t sample_rate;
+    uint16_t bits_per_sample;
+    uint16_t num_channels;
+} wav_header_t;
+   
+
+
+/**
+ * @file
+ * @brief Initializes and configures the I2S peripheral for audio output.
+ *
+ * This function allocates and configures an I2S TX channel with the specified sample rate, bit width, and number of channels.
+ * It supports mono or stereo output and various bit depths. If the I2S channel is already initialized, it reconfigures clock, GPIO, and slot settings.
+ * Finally, it enables the I2S channel for audio transmission.
+ *
+ * @param[in] sample_rate      I2S sample rate in Hz (e.g. 44100, 48000)
+ * @param[in] bits_per_sample  Audio resolution: supported values are 8, 16, 24, or 32
+ * @param[in] num_channels     Number of channels: 1 for mono, 2 for stereo
+ * @return None
+ */
 void init_i2s(uint32_t sample_rate, uint8_t bits_per_sample, uint8_t num_channels)
 {
     /* Allocate a new TX channel and get the handle of this channel */
@@ -107,13 +131,18 @@ void init_i2s(uint32_t sample_rate, uint8_t bits_per_sample, uint8_t num_channel
 
 
 
-/*******************************************************************************
-* Function Name  			: play_wav
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+ /**
+ * @file
+ * @brief Plays a WAV file through the I2S interface in idle mode.
+ *
+ * This function opens a WAV file, parses its header, initializes the I2S interface,
+ * applies volume adjustment, and streams audio data to the I2S peripheral.
+ * Supports 8, 16, 24, and 32 bit PCM WAV files. Handles mono and stereo channels.
+ * Automatically frees allocated buffers and disables the I2S channel after playback.
+ *
+ * @param[in] file_path Full path to the WAV file to be played.
+ * @return None
+ */
 void play_wav_idle(const char *file_path) {
 	
 	FILE *wav_file = fopen(file_path, "rb");
@@ -229,13 +258,18 @@ void play_wav_idle(const char *file_path) {
  
 
 
-/*******************************************************************************
-* Function Name  			: play_wav
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+ /**
+ * @file
+ * @brief Plays a WAV file through the I2S interface, ensuring buffer flush after playback.
+ *
+ * Opens a WAV file, parses its header, initializes the I2S interface, applies volume adjustment,
+ * and streams audio to the I2S peripheral. Supports 8/16/24/32 bit PCM, mono/stereo. 
+ * After playback, flushes the I2S buffer with zeros and waits to ensure complete playback.
+ * Frees resources and disables the I2S channel at the end.
+ *
+ * @param[in] file_path Full path to the WAV file to be played.
+ * @return None
+ */
 void play_wav(const char *file_path) {
 	
 	FILE *wav_file = fopen(file_path, "rb");
@@ -364,13 +398,19 @@ void play_wav(const char *file_path) {
  
 
 
-/*******************************************************************************
-* Function Name  			: CheckWavDuration
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+
+/**
+ * @file
+ * @brief Calculates the duration (in seconds) of a WAV file by parsing its header.
+ *
+ * Opens the WAV file, checks the RIFF and WAVE header, reads the "fmt " and "data" chunks,
+ * and computes the duration of the audio data in seconds. Returns 0 in case of any errors.
+ *
+ * @param[in] file_path Full path to the WAV file to check.
+ * @return float Duration of the WAV file in seconds (rounded to the nearest second), or 0 on error.
+ */
 float  CheckWavDuration(char *file_path)
 {
     FILE *wav_file = fopen(file_path, "rb");
@@ -450,13 +490,17 @@ float  CheckWavDuration(char *file_path)
     return (float)(duration_seconds + 0.5f);
 }
 
-/*******************************************************************************
-* Function Name  			: play_countdown_audio
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+/**
+ * @file
+ * @brief Plays a countdown audio WAV file corresponding to the given countdown value.
+ *
+ * Builds the file path for the countdown audio file using the countdown value,
+ * prints the file path to the terminal, and plays the file using play_wav().
+ *
+ * @param[in] countdown_value Integer value for the countdown (e.g., 5 for "5.wav").
+ * @return None
+ */
 void play_countdown_audio(int countdown_value) {
     char file_path[50];
     snprintf(file_path, sizeof(file_path), WAV_FILE_PATH, countdown_value);
@@ -465,13 +509,19 @@ void play_countdown_audio(int countdown_value) {
 }
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+/**
+ * @file
+ * @brief Plays a counter WAV file through I2S for a fixed duration (e.g., 850 ms), with volume adjustment.
+ *
+ * Opens the WAV file, parses its header, initializes the I2S interface, and streams audio data for a limited duration.
+ * Supports 8/16/24/32 bit PCM, mono/stereo. If StopPlayWav is set or the duration is reached, playback stops.
+ * Frees resources and disables the I2S channel at the end.
+ *
+ * @param[in] file_path Full path to the WAV file to be played.
+ * @return None
+ */
 void play_wav_counter(const char* file_path) {
    FILE *wav_file = fopen(file_path, "rb");
     if (!wav_file) {
@@ -598,27 +648,21 @@ void play_wav_counter(const char* file_path) {
 
  
 
+ 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-
-#define DAC_CHANNEL_1_GPIO 25
-static const char *TAG_DAC = "WAV_PLAYER";
-#define DAC_OUTPUT_PIN DAC_CHAN_0_GPIO_NUM // DAC_CHAN_0 için GPIO numarası (GPIO25)
-
-typedef struct {
-    uint32_t sample_rate;
-    uint16_t bits_per_sample;
-    uint16_t num_channels;
-} wav_header_t;
-
-// WAV başlığını okuma fonksiyonu
-bool read_wav_header(FILE* f, wav_header_t* header) {
+/**
+ * @file
+ * @brief Reads the header of a WAV file and extracts sample rate, bit depth, and channel count.
+ *
+ * Reads the first 44 bytes of the WAV file, parses header fields in Little Endian format,
+ * and populates the given wav_header_t struct with sample rate, bits per sample, and number of channels.
+ * Returns false and logs an error if the header cannot be read.
+ *
+ * @param[in]  f       Pointer to the opened WAV file (FILE*)
+ * @param[out] header  Pointer to the wav_header_t struct to fill
+ * @return bool True on success, false if header could not be read.
+ */
+ bool read_wav_header(FILE* f, wav_header_t* header) {
     uint8_t header_buf[44];
     if (fread(header_buf, 1, 44, f) != 44) {
         ESP_LOGE(TAG_DAC, "WAV basligi okunamadi");

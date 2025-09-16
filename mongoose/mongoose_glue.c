@@ -504,7 +504,7 @@ void glue_set_playSound(struct playSound *data) {
   printf("volume_factor degeri: %.2f\n", volume_factor);
   printf("Volume degeri: %d\n", s_playSound.soundLevel);
   printf("Dosya adi: %s\n", s_playSound.fileName);
-  //stopTestMode();
+ 
 }
 
 

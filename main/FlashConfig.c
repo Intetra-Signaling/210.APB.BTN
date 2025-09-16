@@ -2,7 +2,18 @@
  * FlashConfig.c
  *
  *  Created on: 28 Nis 2025
- *      Author: metesepetcioglu
+ *
+ * @file
+ * @brief Provides API functions to write, read, erase, and initialize configuration data in ESP32 NVS flash storage.
+ *
+ * This module manages persistent configuration settings for embedded systems using ESP32 NVS (Non-Volatile Storage).
+ * It includes functions for safe storage, retrieval, and cleanup of multiple configuration structures.
+ * All key operations for interacting with configuration data in flash are implemented here.
+ *
+ * @company    INTETRA
+ * @version    v.0.0.0.1
+ * @creator    Mete SEPETCIOGLU
+ * @update     Mete SEPETCIOGLU
  */
 
 #include "FlashConfig.h"
@@ -15,13 +26,20 @@ extern struct alt1Configuration s_alt1Configuration;
 extern struct alt2Configuration s_alt2Configuration; 
 extern struct alt3Configuration s_alt3Configuration; 
 extern struct network_settings s_network_settings;
-/*******************************************************************************
-* Function Name              : writeFlash
-* Description                : Writes data to flash memory
-* Input                     : const char *key, const void *data, size_t length
-* Output                    : None
-* Return                    : esp_err_t (ESP_OK on success, error code otherwise)
-*******************************************************************************/
+
+
+/**
+ * @brief      Writes a blob of data to NVS flash storage under the given key.
+ *
+ * @param[in]  key     The key to store the data under.
+ * @param[in]  data    Pointer to the data buffer to write.
+ * @param[in]  length  The length of the data buffer in bytes.
+ * @return     ESP_OK on success, or an ESP error code on failure.
+ *
+ * @details
+ * Opens the NVS storage namespace "storage" for read/write access, writes the provided data as a blob under the specified key,
+ * commits the changes, and closes the NVS handle. If any step fails, returns the respective error code.
+ */
 esp_err_t writeFlash(const char *key, const void *data, size_t length)
 {
     nvs_handle_t nvs_handle;
@@ -44,12 +62,22 @@ esp_err_t writeFlash(const char *key, const void *data, size_t length)
     nvs_close(nvs_handle);
     return err;
 }
-/*******************************************************************************   
-* Description                : Reads data from flash memory
-* Input                     : const char *key, void *data, size_t *length
-* Output                    : None
-* Return                    : esp_err_t (ESP_OK on success, error code otherwise)
-*******************************************************************************/
+
+
+
+/**
+ * @brief      Reads a blob of data from NVS flash storage for the given key.
+ *
+ * @param[in]  key     The key to retrieve the data from.
+ * @param[out] data    Pointer to the buffer where the read data will be stored.
+ * @param[in,out] length Pointer to the length of data buffer, updated with actual size read.
+ * @return     ESP_OK on success, or an ESP error code on failure.
+ *
+ * @details
+ * Opens the NVS storage namespace "storage" for read-only access, retrieves the blob stored under the specified key,
+ * stores the data in the provided buffer, updates the length with the actual bytes read, and closes the NVS handle.
+ * If any step fails, returns the respective error code.
+ */
 esp_err_t readFlash(const char *key, void *data, size_t *length)
 {
     nvs_handle_t nvs_handle;
@@ -69,12 +97,18 @@ esp_err_t readFlash(const char *key, void *data, size_t *length)
     return err;
 }
 
-/*******************************************************************************   
-* Description               : FlashInit
-* Input                     : None
-* Output                    : None
-* Return                    : None
-*******************************************************************************/
+ 
+ 
+ /**
+ * @brief      Initializes NVS flash storage, handling common errors.
+ *
+ * @return     ESP_OK on success, or an ESP error code on failure.
+ *
+ * @details
+ * Calls `nvs_flash_init()` to initialize NVS. If there are no free pages or a new NVS version is found,
+ * erases NVS storage and retries initialization. On failure, prints the error and returns the error code.
+ * (TODO: Add alarm logging for NVS errors.)
+ */
 esp_err_t FlashInit(void)
 {
     esp_err_t err = nvs_flash_init();
@@ -91,39 +125,22 @@ esp_err_t FlashInit(void)
 
     return ESP_OK;
 }
-/*******************************************************************************   
-* Description               : None
-* Input                     : None
-* Output                    : None
-* Return                    : None
-*******************************************************************************/
-
-// Flash’a yaz
-void saveDefaultToFlash(void) {
- 
-
-}
 
 
-/*******************************************************************************   
-* Description               : None
-* Input                     : None
-* Output                    : None
-* Return                    : None
-*******************************************************************************/
-void CheckInternalFlash(void) 
-{
-
-}
 
 
-/*******************************************************************************
-* Function Name              : loadConfigurationsFromFlash
-* Description                : Loads all configurations from flash memory
-* Input                      : None
-* Output                     : None
-* Return                     : esp_err_t (ESP_OK if all loaded successfully)
-*******************************************************************************/
+/**
+ * @brief      Loads configuration structures from NVS flash storage.
+ *
+ * @return     ESP_OK if all configurations loaded successfully, ESP_FAIL if any failed.
+ *
+ * @details
+ * Attempts to read configuration data from flash for each configuration structure:
+ * - Loads "defconf" into s_defaultConfiguration.
+ * - Loads "alt1conf" into s_alt1Configuration.
+ * If reading from flash fails for any configuration, prints a message and sets return value to ESP_FAIL.
+ * If a configuration cannot be loaded, default values are used.
+ */
 esp_err_t loadConfigurationsFromFlash(void)
 {
     esp_err_t ret = ESP_OK;
@@ -277,13 +294,17 @@ esp_err_t loadConfigurationsFromFlash(void)
     
 }
 
-/*******************************************************************************
-* Function Name              : loadConfigurationsFromFlash
-* Description                : Loads all configurations from flash memory
-* Input                      : None
-* Output                     : None
-* Return                     : esp_err_t (ESP_OK if all loaded successfully)
-*******************************************************************************/
+
+
+ /**
+ * @brief      Loads WiFi SSID from flash and starts WiFi with appropriate settings.
+ *
+ * @details
+ * Attempts to read the WiFi SSID from NVS flash using WIFI_SSID_KEY.
+ * - If reading fails, SSID is empty, or the first character is null, starts WiFi with default settings (`wifi_init_ap()`).
+ * - If a valid SSID is read, starts WiFi with custom settings using `wifi_init_ap_mg()`.
+ * Logs which type of initialization is performed.
+ */
 void loadWifiSettings(void) {
 
     size_t ssid_len = sizeof(s_wifiSettings.ssid);
@@ -304,13 +325,18 @@ void loadWifiSettings(void) {
     }
 }
 
-/*******************************************************************************
-* Function Name              : None
-* Description                : None
-* Input                      : None
-* Output                     : None
-* Return                     : None
-*******************************************************************************/
+
+
+/**
+ * @brief      Converts a configuration structure to an alt1Configuration structure.
+ *
+ * @param[in]  src   Pointer to the source configuration structure.
+ * @param[out] dest  Pointer to the destination alt1Configuration structure.
+ *
+ * @details
+ * Copies all relevant fields from the source configuration to the destination alt1Configuration,
+ * including booleans, strings, integers, volumes, play periods, and action strings.
+ */
 void convert_config_to_alt(struct configuration *src, struct alt1Configuration *dest) {
     dest->isIdleActive = src->isIdleActive;
     strcpy(dest->idleSound, src->idleSound);
@@ -331,6 +357,18 @@ void convert_config_to_alt(struct configuration *src, struct alt1Configuration *
     dest->greenCountTo = src->greenCountTo;
     strcpy(dest->greenAction, src->greenAction);
 }
+
+
+/**
+ * @brief      Converts a configuration structure to an alt3Configuration structure.
+ *
+ * @param[in]  src   Pointer to the source configuration structure.
+ * @param[out] dest  Pointer to the destination alt3Configuration structure.
+ *
+ * @details
+ * Copies all relevant fields from the source configuration to the destination alt3Configuration.
+ * Converts the isGreenActive field from bool to int (1 or 0) to match alt3Configuration expectations.
+ */
 void convert_config_to_alt3(struct configuration *src, struct alt3Configuration *dest) {
   dest->isIdleActive = src->isIdleActive;
   strcpy(dest->idleSound, src->idleSound);
@@ -352,13 +390,18 @@ void convert_config_to_alt3(struct configuration *src, struct alt3Configuration 
   strcpy(dest->greenAction, src->greenAction);
 }
 
-/*******************************************************************************
-* Function Name  			: ClearConfigsFromFlash
-* Description    			: Clears all configuration data from NVS flash memory
-* Input         			: None
-* Output        			: None
-* Return        			: true if all data cleared successfully, false otherwise
-*******************************************************************************/
+
+
+/**
+ * @brief      Clears specific configuration keys from NVS flash storage.
+ *
+ * @return     true if all keys were cleared successfully, false otherwise.
+ *
+ * @details
+ * Opens the "storage" namespace in NVS for writing, then attempts to erase a predefined list of configuration keys.
+ * For each key, logs whether it was successfully cleared, not found, or failed to clear.
+ * Commits all changes and closes the NVS handle.
+ */
 bool v1_ClearConfigsFromFlash(void)
 {
     bool success = true;
@@ -417,6 +460,17 @@ bool v1_ClearConfigsFromFlash(void)
     return success;
 }
 
+
+
+/**
+ * @brief      Clears all configuration key-value pairs from NVS flash storage.
+ *
+ * @return     true if all configurations were cleared successfully, false otherwise.
+ *
+ * @details
+ * Opens the "storage" namespace in NVS for writing, erases all key-value pairs, commits the changes,
+ * and closes the NVS handle. Logs errors and results using ESP_LOG macros.
+ */
 bool ClearConfigsFromFlash(void)
 {
     nvs_handle_t nvs_handle;

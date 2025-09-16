@@ -102,8 +102,6 @@ extern bool NetworkSettingsPageRequest;
 extern bool isOtaDone;
 extern struct xCurrentConfiguration CurrentConfiguration;
 
-SemaphoreHandle_t audio_semaphore = NULL;
-SemaphoreHandle_t xFlashMutex = NULL;
 
  // Son çalınma zamanlarını tutan değişkenler
 TickType_t last_any_play_time = 0;
@@ -119,21 +117,7 @@ volatile bool new_file_2_ready = false;  // İkinci ses için flag
 volatile bool audio_playing = false;
 
 
-// Kritik bölge için gerekli değişken
-portMUX_TYPE flash_mux1 = portMUX_INITIALIZER_UNLOCKED;
-// ADC için mutex
-extern SemaphoreHandle_t adc_mutex;
 
-// This function would typically be called once during system initialization
-void init_nvs_mutex(void) {
-  if (xFlashMutex == NULL) {
-    xFlashMutex = xSemaphoreCreateMutex();
-    if (xFlashMutex == NULL) {
-      ESP_LOGE(TAG_GLUE, "Failed to create global NVS mutex!");
-      // Handle fatal error, e.g., esp_restart();
-    }
-  }
-}
 
 void Timer_Threads_Init(void) {
 
@@ -794,15 +778,7 @@ void IO_Task(void *pvParameters) {
         sum += adc_samples[i];
       }
       g_adcAverage = sum / ADC_AVERAGE_COUNT;
-
-      //	    volume_factor = ((float)(g_adcAverage - MIN_ADC_VALUE) /
-      //(MAX_ADC_VALUE - MIN_ADC_VALUE))
-      //	                    * (MAX_VOLUME_FACTOR - MIN_VOLUME_FACTOR) +
-      //MIN_VOLUME_FACTOR;
-
-      //      	ESP_LOGI(TAGADC, "ADC ort: %"PRIu32", volume_factor: %.3f",
-      //      g_adcAverage, volume_factor);
-
+      
       // *** NEW LOGIC FOR HISTORY UPDATE (Once per second) ***
       s_adc_update_counter++;
       if (s_adc_update_counter >=
@@ -836,23 +812,12 @@ void IO_Task(void *pvParameters) {
       //TrackInputRequest(&green_input); // <-- Talep süresi takibi, IO 35
       //TrackInputRequest(&red_input);   // <-- Talep süresi takib, IO 32
 
-      //            if(isGreenCountdownAction == true)
-      //            {
-      //				printf("isGreenCountdownAction =
-      //true\n");
-      //			}
-      //		    if(isGreenCountdownAction == false)
-      //            {
-      //		    printf("isGreenCountdownAction = false\n");
-      //			}
-
+      
       if (green_input.isCountdown_active == true) {
         isGreenCountdownAction = true;
       }
 
-      if (red_input.isCountdown_active == false &&
-          green_input.isCountdown_active ==
-              false) // iki lamba da kapaliysa sureleri sil...
+      if (red_input.isCountdown_active == false && green_input.isCountdown_active == false) // iki lamba da kapaliysa sureleri sil...
       {
         //			red_input.countdown_current = 0;
         //		    green_input.countdown_current = 0;
@@ -865,13 +830,11 @@ void IO_Task(void *pvParameters) {
         //
         //		    red_input.total_steady_time = 0;
         //		    green_input.total_steady_time = 0;
-
         //  printf(">>> Both lamps OFF, cleared all times <<<\n");
       }
       if (red_input.total_flash_time > 20000 ||
           green_input.total_flash_time >
-              20000) // iki lambadan birisi uzun sure flash yaptiysa sureleri
-                     // sil...
+              20000) // iki lambadan birisi uzun sure flash yaptiysa sureleri sil...
       {
         //			red_input.countdown_current = 0;
         //		    green_input.countdown_current = 0;
@@ -975,43 +938,7 @@ void PlayWav_Task(void *pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
-/*******************************************************************************
- * Function Name  			: stopTestMode
- * Description    			: stopTestMode
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
-void stopTestModeThread(TimerHandle_t xTimer) {
-  TestMode = false;
-  printf("Test modu kapatildi\n");
-  // Timer'ı sil ve NULL yap
-  if (xTimer != NULL) {
-    xTimerDelete(xTimer, 0);
-    testModeTimer = NULL;
-  }
-}
 
-/*******************************************************************************
- * Function Name  			: stopTestMode
- * Description    			: stopTestMode
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
-void stopTestMode(void) {
-  // Timer oluştur (eğer henüz oluşturulmadıysa)
-  if (testModeTimer == NULL) {
-    testModeTimer = xTimerCreate("TestModeTimer",     // Timer adı
-                                 pdMS_TO_TICKS(3000), // 3 saniye
-                                 pdFALSE,             // One-shot timer
-                                 (void *)0,           // Timer ID
-                                 stopTestModeThread   // Callback fonksiyonu
-    );
-  }
-  // Timer'ı başlat (yeniden)
-  xTimerStart(testModeTimer, 0);
-}
 
 /*******************************************************************************
  * Function Name  			: save_all_configs_task

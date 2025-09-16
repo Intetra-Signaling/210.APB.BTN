@@ -1,39 +1,49 @@
+/*
+ * wifi.c
+ *
+ *  Created on: 7 Mar 2025
+ *
+ * @file
+ * @brief Provides functions for controlling and managing WiFi connectivity (STA and AP mode).
+ *
+ * This module includes initialization, configuration, and event handling routines for WiFi.
+ * All low-level and high-level operations for network connection and access point management are handled here.
+ *
+ * @company    INTETRA
+ * @version    v.0.0.0.1
+ * @creator    Mete SEPETCIOGLU
+ * @update     Mete SEPETCIOGLU
+ */
+
 #include "wifi.h"
 #include "esp_system.h"
 #include "mongoose_glue.h"
-static EventGroupHandle_t s_wifi_event_group;
 
+
+static EventGroupHandle_t s_wifi_event_group;
 esp_netif_t* esp_netif_ap  = NULL;
 extern TaskHandle_t mongoose_task_handle;
 bool WifiConnectedFlag = false;
 static bool wifi_initialized = false;
 char unique_ssid[MAX_SSID_LENGTH] = {0};
+ 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-//static void event_handler(void *arg, esp_event_base_t event_base,
-//                          int32_t event_id, void *event_data) {
-//  static int retry_count = 0;
-//  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-//    esp_wifi_connect();
-//  } else if (event_base == WIFI_EVENT &&
-//             event_id == WIFI_EVENT_STA_DISCONNECTED) {
-//    esp_wifi_connect();
-//    retry_count++;
-//    MG_INFO(("Connecting to the AP fail, attempt #%d", retry_count));
-//  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-//    ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
-//    MG_INFO(("Got IP ADDRESS: " IPSTR, IP2STR(&event->ip_info.ip)));
-//    retry_count = 0;
-//    xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-//  }
-//}
 
+/**
+ * @brief Event handler for WiFi and IP events.
+ *
+ * Handles WiFi station start, disconnection, and IP acquisition events.
+ * On station start, attempts to connect to the AP.
+ * On disconnection, retries connection and logs the attempt count.
+ * On successful IP acquisition, logs the assigned IP and sets the connection bit.
+ *
+ * @param[in] arg         User-defined argument (unused).
+ * @param[in] event_base  Base of the event (WIFI_EVENT or IP_EVENT).
+ * @param[in] event_id    Event ID specifying the event type.
+ * @param[in] event_data  Pointer to event-specific data.
+ * 
+ * @return None
+ */
 static void mg_wifi_event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data) {
   static int retry_count = 0;
@@ -53,6 +63,25 @@ static void mg_wifi_event_handler(void *arg, esp_event_base_t event_base,
 }
 
 
+
+/**
+ * @brief Handles WiFi and IP events for both STA (client) and AP (access point) modes.
+ *
+ * This event handler manages WiFi connectivity by reacting to various events:
+ * - In STA mode: starts connection, handles connection/disconnection, and updates connection status.
+ * - In AP mode: logs device connections/disconnections to the AP.
+ * - Handles IP assignment events for both modes, logging new IP addresses.
+ *
+ * @param[in] arg         Unused user argument.
+ * @param[in] event_base  The event base (WIFI_EVENT or IP_EVENT).
+ * @param[in] event_id    The event ID, specifying the event type.
+ * @param[in] event_data  Pointer to event-specific data structure.
+ *
+ * @return None
+ *
+ * @note Uses MG_INFO for logging. Updates WifiConnectedFlag on STA connect/disconnect.
+ *       On STA disconnect, attempts to reconnect after a short delay.
+ */
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data) {
     // 🔹 Common events for both AP and STA modes
@@ -119,13 +148,30 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         }
     }
 }
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+
+/**
+ * @brief Initializes and connects the device to a WiFi access point in STA mode.
+ *
+ * This function performs all necessary steps to set up WiFi connectivity:
+ * - Initializes non-volatile storage (NVS).
+ * - Creates an event group for WiFi status tracking.
+ * - Initializes network interface and event loop.
+ * - Configures the default WiFi station interface.
+ * - Registers event handlers for WiFi and IP events.
+ * - Sets the WiFi SSID and password configuration.
+ * - Starts the WiFi driver and attempts connection.
+ * - Waits for connection or failure event, and logs result.
+ *
+ * @param[in] ssid Pointer to the SSID string to connect to.
+ * @param[in] pass Pointer to the password string for the network.
+ *
+ * @return None
+ *
+ * @note Uses MG_INFO and MG_ERROR for logging connection status.
+ *       Blocks until connection is established or fails.
+ */
 void wifi_init(const char *ssid, const char *pass) {
   // Initialize NVS
   esp_err_t ret = nvs_flash_init();
@@ -171,14 +217,28 @@ void wifi_init(const char *ssid, const char *pass) {
 
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-//// **WiFi Access Point Başlatma**
+
+/**
+ * @brief Initializes the device as a WiFi Access Point (AP) with a unique SSID.
+ *
+ * This function configures and starts the WiFi AP mode. If Ethernet is connected,
+ * WiFi AP mode initialization is aborted. It generates a unique SSID, sets up static IP and DHCP,
+ * configures security and channel parameters, and starts the AP service.
+ *
+ * Event handlers for WiFi and IP events are registered. The AP IP, gateway, and netmask
+ * are set statically before starting the DHCP server for connected stations.
+ *
+ * The AP configuration uses the following parameters:
+ * - SSID: auto-generated unique string
+ * - Password: WIFI_PASS macro; if empty, AP auth is set to open
+ * - Channel: WIFI_CHANNEL macro
+ * - Max connections: MAX_STA_CONN macro
+ * 
+ * @return None
+ *
+ * @note If Ethernet is connected (EthConnectedFlag is true), WiFi AP mode will not start.
+ *       The current AP SSID is stored in s_wifiSettings.ssid.
+ */
 void wifi_init_ap(void) {
     generate_unique_ssid(unique_ssid, sizeof(unique_ssid));
     
@@ -255,26 +315,27 @@ void wifi_init_ap(void) {
 }
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+/**
+ * @brief Checks if the device is connected to a network (Ethernet or WiFi).
+ *
+ * Returns true if either Ethernet or WiFi connection flag is set.
+ *
+ * @return true if network is connected, false otherwise.
+ */
 bool is_network_connected(void) {
     return EthConnectedFlag || WifiConnectedFlag;
 }
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-
+/**
+ * @brief Deinitializes the WiFi Access Point (AP) mode.
+ *
+ * Stops and deinitializes the WiFi driver if it was initialized, and destroys the AP network interface.
+ * Resets the wifi_initialized flag and AP netif pointer.
+ *
+ * @return None
+ */
 void wifi_deinit_ap(void) {
     if (wifi_initialized) {
         esp_wifi_stop();
@@ -287,14 +348,21 @@ void wifi_deinit_ap(void) {
     }
 }
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-// MAC adresini kullanarak benzersiz SSID oluştur
+
+/**
+ * @brief Generates a unique WiFi SSID using the device's MAC address.
+ *
+ * The SSID is composed of a prefix (WIFI_SSID_PREFIX) followed by the last 3 bytes of the device's MAC address.
+ * This ensures each device's AP SSID is unique.
+ *
+ * @param[out] ssid    Buffer to store the generated SSID.
+ * @param[in]  max_len Maximum length of the SSID buffer.
+ *
+ * @return None
+ *
+ * @note Uses esp_efuse_mac_get_default() to obtain the MAC address.
+ *       Example: If WIFI_SSID_PREFIX is "Device_", MAC is xx:xx:xx:AA:BB:CC, SSID will be "Device_AABBCC".
+ */
 void generate_unique_ssid(char *ssid, size_t max_len) {
     uint8_t mac[6];
     ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac));
@@ -302,15 +370,27 @@ void generate_unique_ssid(char *ssid, size_t max_len) {
     snprintf(ssid, max_len, "%s%02X%02X%02X", 
              WIFI_SSID_PREFIX, mac[3], mac[4], mac[5]);
 }
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-//// **WiFi Access Point Başlatma**
-void wifi_init_ap_mg(void) {
+
+
+/**
+ * @brief Initializes the device as a WiFi Access Point (AP) using the SSID from s_wifiSettings.
+ *
+ * This function sets up WiFi AP mode unless Ethernet is connected. 
+ * It uses the SSID stored in s_wifiSettings.ssid, configures static IPs, gateway, netmask, 
+ * and starts the DHCP server for connected stations. 
+ * Event handlers for WiFi and IP events are registered.
+ *
+ * The AP configuration uses the following parameters:
+ * - SSID: from s_wifiSettings.ssid
+ * - Password: WIFI_PASS macro; if empty, AP auth is set to open
+ * - Channel: WIFI_CHANNEL macro
+ * - Max connections: MAX_STA_CONN macro
+ * 
+ * @return None
+ *
+ * @note If Ethernet is connected (EthConnectedFlag is true), WiFi AP mode will not start.
+ */
+ void wifi_init_ap_mg(void) {
     if (EthConnectedFlag) {
         ESP_LOGI("WiFi", "Ethernet bagli, WiFi baslatilamiyor.");
         return;  // Ethernet varsa WiFi açma
@@ -376,18 +456,5 @@ void wifi_init_ap_mg(void) {
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI("WiFi", "WiFi AP baslatildi! SSID: %s, sifre: %s", s_wifiSettings.ssid, WIFI_PASS);
-  
 }
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
-void System_Wifi_Init(void)
-{
-	// WiFi ayarlarını yükle
-    struct wifiSettings settings;
-}

@@ -27,11 +27,9 @@
 #include "esp_adc/adc_continuous.h"
 #include "freertos/semphr.h"
 #include "driver/gpio.h"
-/////////////////////////////////////////////////////////////////////////////////////////
-/***************************************THREADS******************************************/
 
-#define APPLICATON_VERSION "v.0.0.0.1"
 
-//void read_file(const char *filename);
+#define APPLICATON_VERSION "v.0.0.0.2"
+
 
 #endif /* MAIN_MAIN_H_ */

@@ -2,16 +2,40 @@
  * Plan.c
  *
  *  Created on: 30 Nis 2025
- *      Author: metesepetcioglu
+ *
+ * @file
+ * @brief Provides API functions to manage daily and special plans for device configuration.
+ *
+ * This module calculates and applies the current operational plan based on time, weekday, and holidays.
+ * It supports weekly and special day plans with per-slot configuration, and automatically selects
+ * the correct configuration for each time slot (e.g. 15-minute intervals).
+ * All key operations for plan selection and configuration updates are implemented here.
+ *
+ * @company    INTETRA
+ * @version    v.0.0.0.1
+ * @creator    Mete SEPETCIOGLU
+ * @update     Mete SEPETCIOGLU
  */
  
 #include "Plan.h"
 #include "mongoose_glue.h"
+
 struct xCurrentConfiguration CurrentConfiguration;
 char CurrentPlan; //0,1,2,3 olabilir.
 
 
-
+/**
+ * @brief Calculates and sets the current plan character according to time, weekday, and holidays.
+ *
+ * This function determines the current plan by checking the weekly schedule for the current weekday
+ * and overrides it with a holiday plan if today's date matches any defined special days.
+ * Each plan consists of 96 characters, each representing a 15-minute slot in a day.
+ * It sets the global variable CurrentPlan to the plan value for the current time slot.
+ * If the plan is invalid or the character is outside the range '0'–'3', it falls back to default '0'.
+ * Also calls GetCurrentConfiguration() at the end.
+ *
+ * @return None.
+ */
 void GetCurrentPlan(void)
 {
     const char* dayPlan = NULL;
@@ -76,6 +100,19 @@ void GetCurrentPlan(void)
 }
 
 
+
+
+/**
+ * @brief Updates the CurrentConfiguration structure according to the current plan.
+ *
+ * This function selects and copies the relevant configuration set (default or alternative 1–3)
+ * into the global CurrentConfiguration structure, based on the value of CurrentPlan.
+ * Configuration includes sound parameters, volume levels, activity flags, and green action settings.
+ *
+ * @note If CurrentPlan is not '0', '1', '2', or '3', no changes are made.
+ *
+ * @return None.
+ */
 void GetCurrentConfiguration(void) 
 {
     if(CurrentPlan == '0') {
@@ -161,6 +198,15 @@ void GetCurrentConfiguration(void)
 }
 
 
+/**
+ * @brief Returns the three-letter abbreviation for a given month number.
+ *
+ * Maps a month number (1–12) to its corresponding English abbreviation.
+ * If the month is out of range, returns "unk" (unknown).
+ *
+ * @param[in] month Month number (1 = January, 12 = December)
+ * @return Pointer to a static string containing the month abbreviation, or "unk" if invalid.
+ */
 const char* getMonthAbbreviation(uint8_t month)
 {
     static const char* months[] = {

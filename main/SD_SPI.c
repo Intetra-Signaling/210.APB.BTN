@@ -2,7 +2,18 @@
  * SD_SPI.c
  *
  *  Created on: 27 Şub 2025
- *      Author: metesepetcioglu
+ *
+ * @file
+ * @brief Provides API functions to manage SD card operations via SPI interface.
+ *
+ * This module initializes and manages the SD card using the SPI peripheral. It handles
+ * mounting, reading, writing, deleting, and listing files on the SD card with FAT filesystem support.
+ * All key operations for SD card access, error handling, and file management are implemented here.
+ *
+ * @company    INTETRA
+ * @version    v.0.0.0.1
+ * @creator    Mete SEPETCIOGLU
+ * @update     Mete SEPETCIOGLU
  */
 
 
@@ -29,10 +40,7 @@ static const char *TAG_SD = "SD_CHECK";
 #define EXAMPLE_MAX_CHAR_SIZE    64
 
 const char *TAGSD = "example";
-
-
-
-
+ 
 
 #ifdef CONFIG_EXAMPLE_DEBUG_PIN_CONNECTIONS
 const char* names[] = {"CLK ", "MOSI", "MISO", "CS  "};
@@ -66,13 +74,17 @@ pin_configuration_t config = {
 #define PIN_NUM_CS    CONFIG_EXAMPLE_PIN_CS
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+/*
+ * @file
+ * @brief Writes string data to a file at the given path.
+ *
+ * Opens a file in write mode and writes the provided data string. Logs the operation and errors.
+ * Returns ESP_OK on success, ESP_FAIL if file could not be opened.
+ *
+ * @param[in] path Path to the file to be written.
+ * @param[in] data Null-terminated string to write to the file.
+ * @return esp_err_t ESP_OK on success, ESP_FAIL on error.
+ */
 esp_err_t s_example_write_file(const char *path, const char *data)
 {
     ESP_LOGI(TAGSD, "Opening file %s", path);
@@ -89,13 +101,17 @@ esp_err_t s_example_write_file(const char *path, const char *data)
 }
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+/**
+ * @file
+ * @brief Reads a single line from a file at the given path.
+ *
+ * Opens the file in read mode and reads one line into a buffer, stripping the newline character.
+ * Logs the operation and any errors. Returns ESP_OK on success, ESP_FAIL on error.
+ *
+ * @param[in] path Path to the file to be read.
+ * @return esp_err_t ESP_OK on success, ESP_FAIL if file could not be opened.
+ */
  esp_err_t s_example_read_file(const char *path)
 {
     ESP_LOGI(TAGSD, "Reading file %s", path);
@@ -118,13 +134,19 @@ esp_err_t s_example_write_file(const char *path, const char *data)
     return ESP_OK;
 }
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+/**
+ * @file
+ * @brief Initializes SD card and mounts FAT filesystem using SPI interface.
+ *
+ * This function configures and initializes the SD card using SPI, sets up the bus and slot,
+ * and mounts the FAT filesystem at a predefined mount point. It provides detailed logging
+ * for each step and handles errors by logging and optionally formatting the card if configured.
+ * If initialization or mounting fails, appropriate alarms are triggered.
+ *
+ * @return None.
+ */
 void init_sd_card(void)
 {
     esp_err_t ret;
@@ -307,13 +329,17 @@ void init_sd_card(void)
 }
 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+/**
+ * @file
+ * @brief Writes a test string to an SD card file.
+ *
+ * Attempts to write the string "Merhaba SD Kart!\n" to the file "/deneme1234596.txt" on the SD card.
+ * Logs whether the operation was successful or if there was a write error.
+ *
+ * @return None.
+ */ 
 void write_to_sd_card(void) {
   const char *filename = "/deneme1234596.txt";
   const char *data = "Merhaba SD Kart!\n";
@@ -325,25 +351,35 @@ void write_to_sd_card(void) {
     ESP_LOGE(TAGSD,"Yazma hatasi");
   }
 }
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+
+
+/**
+ * @file
+ * @brief Checks if the SD card filesystem is currently mounted.
+ *
+ * Uses esp_vfs_fat_info() to query filesystem information at the mount point.
+ * Returns true if the filesystem is available (ESP_OK), false otherwise.
+ *
+ * @return bool True if SD card is mounted, false otherwise.
+ */
+
 bool is_sd_card_mounted() {
-    size_t total = 0, used = 0;
+    uint64_t  total = 0, used = 0;
     return (esp_vfs_fat_info(MOUNT_POINT, &total, &used) == ESP_OK);
 }
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
 
+ 
+
+/**
+ * @file
+ * @brief Tests SD card write functionality using POSIX file operations.
+ *
+ * Checks if the SD card is mounted. If it is, attempts to create and write to a test file
+ * ("mongoose_test.txt") using POSIX fopen/fputs. Prints error logs if mounting or write fails.
+ *
+ * @return None.
+ */
 void mg_sd_card_test(void) {
     if (!is_sd_card_mounted()) {
         MG_ERROR(("SD kart montaj edilmemis!"));
@@ -417,15 +453,21 @@ void mg_sd_card_test(void) {
     fclose(posix_fp);
     MG_INFO(("Son durum (%d byte): %.*s", read, read, final_buf));
 }
+ 
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
 
+/**
+ * @file
+ * @brief Lists files in the SD card directory and outputs their info as a JSON array.
+ *
+ * Scans all files in the SD card root directory, builds a JSON array containing each file's
+ * name and size, and writes the result to the provided buffer. Handles buffer size errors
+ * gracefully by returning an empty JSON array if the buffer is too small or an error occurs.
+ *
+ * @param[out] json_buffer Pointer to buffer where JSON output will be placed.
+ * @param[in] buffer_size Size of the output buffer.
+ * @return None.
+ */
 void CheckSDFiles(char *json_buffer, size_t buffer_size) {
     DIR *dir;
     struct dirent *entry;
@@ -524,13 +566,18 @@ void CheckSDFiles(char *json_buffer, size_t buffer_size) {
     }
 }
 
-/*******************************************************************************
-* Function Name  			: None
-* Description    			: None
-* Input         			: None
-* Output        			: None
-* Return        			: None
-*******************************************************************************/
+
+/**
+ * @file
+ * @brief Checks if a file exists on the SD card and replies with a JSON message.
+ *
+ * Builds the full path using "/sdcard/" and the filename, checks existence with stat().
+ * Replies with a JSON message indicating if the file was found or not.
+ * Uses mg_http_reply() for the HTTP response.
+ *
+ * @param[in] filename Name of the file to be checked on the SD card.
+ * @return None.
+ */
 void checkFileName(const char *filename) {
     char full_path[256];
     snprintf(full_path, sizeof(full_path), "/sdcard/%s", filename);
@@ -559,13 +606,19 @@ void checkFileName(const char *filename) {
     }
 }
 
-/*******************************************************************************
-* Function Name  			: DeleteSDFile
-* Description    			: Deletes a file from the SD card (protects default_ files)
-* Input         			: file_path - path to the file to be deleted
-* Output        			: None
-* Return        			: true if file deleted successfully, false otherwise
-*******************************************************************************/
+
+
+/**
+ * @file
+ * @brief Deletes a file from the SD card unless it is a protected default file.
+ *
+ * Attempts to delete the file at the given path. If the path is NULL or the filename begins
+ * with "default_", the operation is aborted and a warning is logged. Returns true on success,
+ * false otherwise.
+ *
+ * @param[in] file_path Full path to the file on the SD card.
+ * @return bool True if the file was deleted, false otherwise.
+ */
 bool DeleteSDFile(const char *file_path)
 {
     if (file_path == NULL) {
@@ -608,13 +661,17 @@ bool DeleteSDFile(const char *file_path)
 }
 
 
-/*******************************************************************************
-* Function Name  			: ClearAllSDFiles
-* Description    			: Deletes specific file types from SD card except those starting with "default_"
-* Input         			: None
-* Output        			: None
-* Return        			: true if operation completed successfully, false otherwise
-*******************************************************************************/
+ 
+/**
+ * @file
+ * @brief Deletes all files on the SD card with specific extensions, except protected files.
+ *
+ * Iterates through files in the SD card root directory. Deletes files matching certain extensions
+ * (.txt, .wav, .mp3, .bin, .log, .dat, .cfg) unless their name starts with "default_".
+ * Tracks counts for deleted, protected, skipped, and error files. Logs the operation summary.
+ *
+ * @return bool True if all deletions were successful, false if any errors occurred.
+ */
 bool ClearAllSDFiles(void)
 {
     DIR *dir;

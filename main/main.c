@@ -1,3 +1,24 @@
+/**
+ * @file main.c
+ * @brief Uygulamanın ana giriş noktası ve temel başlatma işlemleri.
+ *
+ * Tüm donanım ve yazılım modüllerinin başlatılması, WiFi bağlantısı,
+ * web sunucusu (mongoose), zamanlayıcılar ve görevlerin oluşturulması bu dosyada yapılır.
+ *
+ * @details
+ * Bu proje, engelli yaya butonu için geliştirilmiştir. 
+ * Donanım ve yazılım modüllerinin entegrasyonu, ağ bağlantısı ve buton kontrol rutinleri içerir.
+ * 
+ * This project is designed for an accessible pedestrian button.
+ * It integrates hardware and software modules, manages network connections (WiFi, Ethernet), 
+ * and handles button control routines.
+ *
+ * @company   INTETRA
+ * @version   v0.0.0.1
+ * @creator   Mete SEPETCIOGLU
+ * @update    Mete SEPETCIOGLU
+ * @date      16 Sep 2025
+ */
  
 #include "main.h"
 #include "MichADCRead.h"
@@ -17,41 +38,29 @@
 
 uint8_t eth_port_cnt = 0;
 esp_eth_handle_t *eth_handles = NULL;
-extern SemaphoreHandle_t audio_semaphore;
-
 
 #define WIFI_SSID_MG "TETRAHGS IT"
 #define WIFI_PASS_MG "GTU!TETRA2021"
 #define WIFI_SSID_MG_FABRIKA "intetra-Personel"
 #define WIFI_PASS_MG_FABRIKA "INT!per13249*"
 
-// ADC için mutex
-SemaphoreHandle_t adc_mutex = NULL;
+
 
 void app_main(void) {
+	
     FlashInit();
     loadConfigurationsFromFlash();
 	init_sd_card();
     GPIO_Init();
     ADC_Read_Init();
-
     ResetAllTrafficVariables();
 	i2c_master_init();  //RTC module
 	mcp7940n_get_time(&DeviceTime); 
 	
+	eth_reset_pin_init();
 	
-	// Semaphore oluştur
-    audio_semaphore = xSemaphoreCreateMutex();
-    if (audio_semaphore == NULL) {
-        printf("HATA: Audio semaphore olusturulamadi!\n");
-        return;
-    }
-    printf("Audio semaphore basariyla olusturuldu!\n");
-    
-    
 //    ETHapp_main();
 //    loadWifiSettings(); 
-    
     
     wifi_init(WIFI_SSID_MG, WIFI_PASS_MG);
     mongoose_init();

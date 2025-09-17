@@ -118,7 +118,14 @@ volatile bool audio_playing = false;
 
 
 
-
+/**
+ * @brief Initializes and creates periodic FreeRTOS timers.
+ *
+ * This function sets up two software timers:
+ * - A 500ms timer with the callback TimerCallback_500ms.
+ * - A 1000ms (1 second) timer with the callback TimerCallback_1000ms.
+ * Both timers are created as auto-reload timers.
+ */
 void Timer_Threads_Init(void) {
 
   // 500 ms timer
@@ -130,13 +137,17 @@ void Timer_Threads_Init(void) {
                                NULL, TimerCallback_1000ms);
 }
 
-/*******************************************************************************
- * Function Name  			: Process_Thread
- * Description    			: Process_Thread
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
+
+
+/**
+ * @brief FreeRTOS thread for managing sound playback logic and state transitions in the pedestrian button project.
+ *
+ * This thread evaluates the current configuration and input states to determine whether idle, request, green counter, or green action sounds should be played.
+ * It handles the scheduling and timing of sound playback, including single and sequential sounds, volume adjustment, and sound duration caching.
+ * Special logic is included for test mode, request period management, silence intervals, green light voice and counter, and green action sound.
+ *
+ * @param[in] arg Pointer to thread parameters (unused).
+ */
 void Process_Thread(void *arg) {
   static TickType_t last_idle_play_time = 0;
   static TickType_t last_request_end_time = 0;
@@ -145,13 +156,13 @@ void Process_Thread(void *arg) {
   
   while (1) {
 
-    /*
-       -------------------------------------------------
-       | 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111 |
-       |-----------------------------------------------|
-       |  +  |  +  |  +  |  +  |  +  |  +  |  +  |  +  |
-       -------------------------------------------------
-       */
+   /*
+   -------------------------------------------------
+   | 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111 |
+   |-----------------------------------------------|
+   |  +  |  +  |  +  |  +  |  +  |  +  |  +  |  +  |
+   -------------------------------------------------
+   */
 
     // --------------------
     // CASE 1: 100
@@ -588,26 +599,30 @@ void Process_Thread(void *arg) {
   }
 }
 
-/*******************************************************************************
- * Function Name  			: TimerCallback_500ms
- * Description    			: TimerCallback_500ms
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
-  
 
+/**
+ * @brief Timer callback function triggered every 500ms.
+ *
+ * This function is called periodically by a FreeRTOS timer.
+ * Currently, it does not implement any logic.
+ *
+ * @param[in] xTimer Handle to the FreeRTOS timer (unused).
+ */
 void TimerCallback_500ms(TimerHandle_t xTimer) {
    
 }
-/*******************************************************************************
- * Function Name  			: TimerCallback_1000ms
- * Description    			: TimerCallback_1000ms
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
 
+
+
+/**
+ * @brief Timer callback function triggered every 1000ms for periodic tasks.
+ *
+ * This function manages the countdown logic for the green signal, including silent and speaking phases,
+ * and selects the appropriate audio file for playback as the countdown progresses.
+ * It also updates the current active plan and handles state transitions and file availability.
+ *
+ * @param[in] xTimer Handle to the FreeRTOS timer (unused).
+ */
 void TimerCallback_1000ms(TimerHandle_t xTimer) {
 
   //   ESP_LOGI("RTC", "Time: %02d:%02d:%02d Date: %02d/%02d/20%02d",
@@ -736,13 +751,16 @@ void TimerCallback_1000ms(TimerHandle_t xTimer) {
   }
 }
 
-/*******************************************************************************
- * Function Name  			: mongoose thread
- * Description    			: mongoose thread
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
+
+
+/**
+ * @brief FreeRTOS task for polling Mongoose events.
+ *
+ * This task repeatedly calls mongoose_poll() to process network events and timers.
+ * It runs in an infinite loop with a 1ms delay between polls.
+ *
+ * @param[in] pvParameters Pointer to task parameters (unused).
+ */
 void mongoose_task(void *pvParameters) {
 	
     while (1) {
@@ -751,14 +769,17 @@ void mongoose_task(void *pvParameters) {
     }
 }
 
-/*******************************************************************************
- * Function Name  			: IO_Task
- * Description    			: IO_Task
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
 
+
+/**
+ * @brief FreeRTOS task for handling IO operations, including ADC sampling and pedestrian button logic.
+ *
+ * This task performs periodic ADC readings, updates a noise level history array, and manages GPIO feedback/input routines for pedestrian signaling.
+ * It scales and stores the ADC average, updates demand states based on button presses, and clears timing if lamp states meet certain conditions.
+ * When a write operation is requested, it deinitializes the ADC and prepares for configuration writing.
+ *
+ * @param[in] pvParameters Pointer to task parameters (unused).
+ */
 void IO_Task(void *pvParameters) {
 
   while (1) {
@@ -876,15 +897,21 @@ void IO_Task(void *pvParameters) {
   }
 }
 
-/*******************************************************************************
- * Function Name  			: play wav thread
- * Description    			: play wav thread
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
 
 
+
+
+
+/**
+ * @brief FreeRTOS task for playing WAV audio files.
+ *
+ * This task checks if a new audio file (or two sequential files) is ready to play.
+ * It copies the file paths, plays the first audio file, and if a second file is ready, waits 50ms and plays the second file.
+ * Playback duration is measured and printed for each file.
+ * The audio_playing flag is set while playback is active and reset after both files are played.
+ *
+ * @param[in] pvParameters Pointer to task parameters (unused).
+ */
 void PlayWav_Task(void *pvParameters) {
     char local_file_path[60];
     char local_file_path_2[60];
@@ -940,13 +967,17 @@ void PlayWav_Task(void *pvParameters) {
 }
 
 
-/*******************************************************************************
- * Function Name  			: save_all_configs_task
- * Description    			: save_all_configs_task
- * Input         			: None
- * Output        			: None
- * Return        			: None
- *******************************************************************************/
+
+/**
+ * @brief FreeRTOS task for saving configuration and system settings to NVS flash.
+ *
+ * This task checks various flags to determine which settings or configuration pages need to be written to flash.
+ * It performs writing for configuration, system info, WiFi settings, audio configuration, user login info, calendar, and network settings.
+ * If certain settings are updated (e.g., WiFi or network), the MCU is reset automatically to apply changes.
+ * Also, if an OTA update is completed, the MCU is restarted.
+ *
+ * @param[in] pvParameters Pointer to task parameters (unused).
+ */
 
 void FlashWrite_task(void *pvParameters) {
   while (1) {

@@ -29,7 +29,7 @@
 #include "driver/gpio.h"
 
 
-#define APPLICATON_VERSION "v.0.0.0.2"
+#define APPLICATON_VERSION "v.0.0.0.3"
 
 
 #endif /* MAIN_MAIN_H_ */

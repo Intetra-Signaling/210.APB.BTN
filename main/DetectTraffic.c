@@ -477,10 +477,7 @@ void DetectPedestrianDemandFeedback(void)
 // Dosya isimlerini bir diziye aktaran yardımcı fonksiyon
 const char* get_audio_file_path(uint32_t count) {
     static const char* audio_files[31];
-    static bool initialized = false;
 
-    // Diziye sadece bir kere kopyala
-    if (!initialized) {
         audio_files[30] = s_audioConfig.sound30;
         audio_files[29] = s_audioConfig.sound29;
         audio_files[28] = s_audioConfig.sound28;
@@ -511,8 +508,7 @@ const char* get_audio_file_path(uint32_t count) {
         audio_files[3] = s_audioConfig.sound3;
         audio_files[2] = s_audioConfig.sound2;
         audio_files[1] = s_audioConfig.sound1;
-        initialized = true;
-    }
+     
     
     // Geri sayım aralığı kontrolü
     if (count >= 1 && count <= 30) {

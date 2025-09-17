@@ -2,6 +2,12 @@
 
 Bu proje altında yapılan tüm geliştirmeler bu dosyada dokümente edilecektir.
 
+## [v.0.0.0.3] - 17.09.2025
+
+- Geri sayim seslerini guncelleme fonksiyonu duzeltildi.
+- Doxygen yapisi eksiklere devam edildi.
+
+
 ## [v.0.0.0.2] - 16.09.2025
 
 - READ.ME guncellendi.

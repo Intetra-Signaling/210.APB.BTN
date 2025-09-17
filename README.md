@@ -16,12 +16,9 @@ Geliştirilen bu arayüz sayesinde, cihazın tüm gerekli ayarları kullanıcı 
 
 ## Kullanıcı Hesapları
 
-|---------------|-----------------|-----------------------------------------------|
 | Kullanıcı Adı | Şifre           | Açıklama                                      |
 |---------------|-----------------|-----------------------------------------------|
 | user          | user            | Varsayılan kullanıcı (şifre değiştirilebilir) |
-|---------------|-----------------|-----------------------------------------------|
 | admin         | !ntetrAPB_5     | Sabit yönetici hesabı (şifre değiştirilemez)  |
-|---------------|-----------------|-----------------------------------------------|
 
 > **Not:** `user` hesabının şifresi web arayüzünden değiştirilebilir, ancak `admin` hesabı ve şifresi sabittir ve değiştirilemez.

@@ -51,7 +51,7 @@ Kullanıcı dostu arayüz ile tüm gerekli ayarlar hızlı ve kolay şekilde yap
 ## Teknik Detaylar & Dosya Yapısı
 
 - **Donanım:** ESP32 tabanlı mikrodenetleyici, hoparlör, titreşim motoru, SD kart.
-- **Yazılım:** C/C++ ile ESP-IDF üzerinde geliştirilmiştir. Mongoose Web Server ile web arayüzü sunar.
+- **Yazılım:** C ile ESP-IDF üzerinde geliştirilmiştir. Mongoose Web Server ile web arayüzü sunar.
 - **Ana dosyalar:**
   - `DetectTraffic.c/h`: Giriş algılama, debounce ve durum takibi
   - `SpeakerDriver.c/h`: Ses dosyası oynatma, dinamik ses seviyesi

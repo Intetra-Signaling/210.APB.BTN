@@ -22,3 +22,8 @@ Geliştirilen bu arayüz sayesinde, cihazın tüm gerekli ayarları kullanıcı 
 | admin         | !ntetrAPB_5     | Sabit yönetici hesabı (şifre değiştirilemez)  |
 
 > **Not:** `user` hesabının şifresi web arayüzünden değiştirilebilir, ancak `admin` hesabı ve şifresi sabittir ve değiştirilemez.
+
+
+
+## Sistem Mimarisi
+<img width="1075" height="657" alt="SystemArchitecture" src="https://github.com/user-attachments/assets/ad8a9715-8d56-4886-9eca-62176043882c" />

@@ -2,6 +2,12 @@
 
 Bu proje altında yapılan tüm geliştirmeler bu dosyada dokümente edilecektir.
 
+## [v.0.0.0.4] - 18.09.2025
+
+- Readme guncellendi.
+- Dosya yapisi duzeltildi.
+- resources ve docs dosyalari eklendi.
+
 ## [v.0.0.0.3] - 17.09.2025
 
 - Geri sayim seslerini guncelleme fonksiyonu duzeltildi.
